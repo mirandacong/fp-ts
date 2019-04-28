@@ -3,7 +3,7 @@ licenses(['notice'])
 ts_library(
     name = 'fp-ts',
     srcs = glob(['src/*.ts']),
-    deps = ['@npm//@types'],
+    module_name = 'fp-ts',
+    tsconfig = ':tsconfig-bazel.json',
     visibility = ['//visibility:public'],
-    tsconfig = ':tsconfig.json',
 )
