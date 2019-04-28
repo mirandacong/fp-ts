@@ -1,16 +1,20 @@
+/**
+ * @file See [Getting started with fp-ts: Semigroup](https://dev.to/gcanti/getting-started-with-fp-ts-semigroup-2mf7)
+ */
 import { Ord, max, min } from './Ord'
 import { concat, identity } from './function'
+import { Magma } from './Magma'
 
 /**
- * @typeclass
+ * A `Semigroup` is a `Magma` where `concat` is associative, that is:
+ *
+ * Associativiy: `concat(concat(x, y), z) = concat(x, concat(y, z))`
+ *
  * @since 1.0.0
  */
-export interface Semigroup<A> {
-  readonly concat: (x: A, y: A) => A
-}
+export interface Semigroup<A> extends Magma<A> {}
 
 /**
- * @function
  * @since 1.0.0
  */
 export const fold = <A>(S: Semigroup<A>) => (a: A) => (as: Array<A>): A => {
@@ -18,7 +22,6 @@ export const fold = <A>(S: Semigroup<A>) => (a: A) => (as: Array<A>): A => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getFirstSemigroup = <A = never>(): Semigroup<A> => {
@@ -26,7 +29,6 @@ export const getFirstSemigroup = <A = never>(): Semigroup<A> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getLastSemigroup = <A = never>(): Semigroup<A> => {
@@ -34,17 +36,37 @@ export const getLastSemigroup = <A = never>(): Semigroup<A> => {
 }
 
 /**
- * @function
- * @since 1.0.0
+ * Given a tuple of semigroups returns a semigroup for the tuple
+ *
+ * @example
+ * import { getTupleSemigroup, semigroupString, semigroupSum, semigroupAll } from 'fp-ts/lib/Semigroup'
+ *
+ * const S1 = getTupleSemigroup(semigroupString, semigroupSum)
+ * assert.deepStrictEqual(S1.concat(['a', 1], ['b', 2]), ['ab', 3])
+ *
+ * const S2 = getTupleSemigroup(semigroupString, semigroupSum, semigroupAll)
+ * assert.deepStrictEqual(S2.concat(['a', 1, true], ['b', 2, false]), ['ab', 3, false])
+ *
+ * @since 1.14.0
  */
-export const getProductSemigroup = <A, B>(SA: Semigroup<A>, SB: Semigroup<B>): Semigroup<[A, B]> => {
+export const getTupleSemigroup = <T extends Array<Semigroup<any>>>(
+  ...semigroups: T
+): Semigroup<{ [K in keyof T]: T[K] extends Semigroup<infer A> ? A : never }> => {
   return {
-    concat: ([xa, xb], [ya, yb]) => [SA.concat(xa, ya), SB.concat(xb, yb)]
+    concat: (x, y) => semigroups.map((s, i) => s.concat(x[i], y[i])) as any
   }
 }
 
 /**
- * @function
+ * Use `getTupleSemigroup` instead
+ * @since 1.0.0
+ * @deprecated
+ */
+export const getProductSemigroup = <A, B>(SA: Semigroup<A>, SB: Semigroup<B>): Semigroup<[A, B]> => {
+  return getTupleSemigroup(SA, SB)
+}
+
+/**
  * @since 1.0.0
  */
 export const getDualSemigroup = <A>(S: Semigroup<A>): Semigroup<A> => {
@@ -54,7 +76,6 @@ export const getDualSemigroup = <A>(S: Semigroup<A>): Semigroup<A> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getFunctionSemigroup = <S>(S: Semigroup<S>) => <A = never>(): Semigroup<(a: A) => S> => {
@@ -64,17 +85,15 @@ export const getFunctionSemigroup = <S>(S: Semigroup<S>) => <A = never>(): Semig
 }
 
 /**
- * @function
- * @since 1.0.0
+ * @since 1.14.0
  */
-export const getRecordSemigroup = <O extends { [key: string]: any }>(
+export const getStructSemigroup = <O extends { [key: string]: any }>(
   semigroups: { [K in keyof O]: Semigroup<O[K]> }
 ): Semigroup<O> => {
   return {
     concat: (x, y) => {
       const r: any = {}
-      const keys = Object.keys(semigroups)
-      for (const key of keys) {
+      for (const key of Object.keys(semigroups)) {
         r[key] = semigroups[key].concat(x[key], y[key])
       }
       return r
@@ -83,7 +102,17 @@ export const getRecordSemigroup = <O extends { [key: string]: any }>(
 }
 
 /**
- * @function
+ * Use `getStructSemigroup` instead
+ * @since 1.0.0
+ * @deprecated
+ */
+export const getRecordSemigroup = <O extends { [key: string]: any }>(
+  semigroups: { [K in keyof O]: Semigroup<O[K]> }
+): Semigroup<O> => {
+  return getStructSemigroup(semigroups)
+}
+
+/**
  * @since 1.0.0
  */
 export const getMeetSemigroup = <A>(O: Ord<A>): Semigroup<A> => {
@@ -93,7 +122,6 @@ export const getMeetSemigroup = <A>(O: Ord<A>): Semigroup<A> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getJoinSemigroup = <A>(O: Ord<A>): Semigroup<A> => {
@@ -104,7 +132,6 @@ export const getJoinSemigroup = <A>(O: Ord<A>): Semigroup<A> => {
 
 /**
  * Boolean semigroup under conjunction
- * @instance
  * @since 1.0.0
  */
 export const semigroupAll: Semigroup<boolean> = {
@@ -113,7 +140,6 @@ export const semigroupAll: Semigroup<boolean> = {
 
 /**
  * Boolean semigroup under disjunction
- * @instance
  * @since 1.0.0
  */
 export const semigroupAny: Semigroup<boolean> = {
@@ -121,26 +147,22 @@ export const semigroupAny: Semigroup<boolean> = {
 }
 
 /**
- * Semigroup under array concatenation
- * @function
+ * Use `Monoid`'s `getArrayMonoid` instead
  * @since 1.0.0
+ * @deprecated
  */
 export const getArraySemigroup = <A = never>(): Semigroup<Array<A>> => {
-  return {
-    concat: (x, y) => concat(x, y)
-  }
+  return { concat }
 }
 
 /**
- * Gets {@link Semigroup} instance for dictionaries given {@link Semigroup} instance for their values
- * @function
+ * Use `Record`'s `getMonoid`
  * @since 1.4.0
- * @example
- * const S = getDictionarySemigroup(semigroupSum)
- * const result = S.concat({ foo: 123 }, { foo: 456 }) // { foo: 123 + 456 }
- * @param S - {@link Semigroup} instance for dictionary values
+ * @deprecated
  */
-export const getDictionarySemigroup = <A>(S: Semigroup<A>): Semigroup<{ [key: string]: A }> => {
+export function getDictionarySemigroup<K extends string, A>(S: Semigroup<A>): Semigroup<Record<K, A>>
+export function getDictionarySemigroup<A>(S: Semigroup<A>): Semigroup<{ [key: string]: A }>
+export function getDictionarySemigroup<A>(S: Semigroup<A>): Semigroup<{ [key: string]: A }> {
   return {
     concat: (x, y) => {
       const r: { [key: string]: A } = { ...x }
@@ -155,21 +177,31 @@ export const getDictionarySemigroup = <A>(S: Semigroup<A>): Semigroup<{ [key: st
   }
 }
 
+// tslint:disable-next-line: deprecation
 const semigroupAnyDictionary = getDictionarySemigroup(getLastSemigroup())
 
 /**
- * Gets {@link Semigroup} instance for objects of given type preserving their type
- * @function
- * @since 1.4.0
+ * Returns a `Semigroup` instance for objects preserving their type
+ *
  * @example
- * const S = getObjectSemigroup<{ foo: number }>()
- * const result = S.concat({ foo: 123 }, { foo: 456 }) // { foo: 456 }
+ * import { getObjectSemigroup } from 'fp-ts/lib/Semigroup'
+ *
+ * interface Person {
+ *   name: string
+ *   age: number
+ * }
+ *
+ * const S = getObjectSemigroup<Person>()
+ * assert.deepStrictEqual(S.concat({ name: 'name', age: 23 }, { name: 'name', age: 24 }), { name: 'name', age: 24 })
+ *
+ * @since 1.4.0
  */
-export const getObjectSemigroup = <A extends object = never>(): Semigroup<A> => semigroupAnyDictionary as any
+export const getObjectSemigroup = <A extends object = never>(): Semigroup<A> => {
+  return semigroupAnyDictionary as any
+}
 
 /**
- * Number Semigroup under addition
- * @instance
+ * Number `Semigroup` under addition
  * @since 1.0.0
  */
 export const semigroupSum: Semigroup<number> = {
@@ -177,8 +209,7 @@ export const semigroupSum: Semigroup<number> = {
 }
 
 /**
- * Number Semigroup under multiplication
- * @instance
+ * Number `Semigroup` under multiplication
  * @since 1.0.0
  */
 export const semigroupProduct: Semigroup<number> = {
@@ -186,7 +217,6 @@ export const semigroupProduct: Semigroup<number> = {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const semigroupString: Semigroup<string> = {
@@ -194,7 +224,6 @@ export const semigroupString: Semigroup<string> = {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const semigroupVoid: Semigroup<void> = {

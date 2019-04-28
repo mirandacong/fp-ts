@@ -13,10 +13,20 @@ import {
   getRecordSemigroup,
   semigroupProduct,
   semigroupSum,
-  semigroupVoid
+  semigroupVoid,
+  getTupleSemigroup,
+  semigroupString,
+  semigroupAll
 } from '../src/Semigroup'
 
 describe('Semigroup', () => {
+  it('getTupleSemigroup', () => {
+    const S1 = getTupleSemigroup(semigroupString, semigroupSum)
+    assert.deepStrictEqual(S1.concat(['a', 1], ['b', 2]), ['ab', 3])
+    const S2 = getTupleSemigroup(semigroupString, semigroupSum, semigroupAll)
+    assert.deepStrictEqual(S2.concat(['a', 1, true], ['b', 2, false]), ['ab', 3, false])
+  })
+
   it('fold', () => {
     assert.strictEqual(fold(monoidString)('')(['a', 'b', 'c']), 'abc')
   })
@@ -26,11 +36,12 @@ describe('Semigroup', () => {
       a: boolean
       b: string
     }
+    // tslint:disable-next-line: deprecation
     const S = getRecordSemigroup<T>({
       a: monoidAll,
       b: monoidString
     })
-    assert.deepEqual(S.concat({ a: true, b: 'foo' }, { a: false, b: 'bar' }), { a: false, b: 'foobar' })
+    assert.deepStrictEqual(S.concat({ a: true, b: 'foo' }, { a: false, b: 'bar' }), { a: false, b: 'foobar' })
   })
 
   it('getMeetSemigroup', () => {
@@ -42,11 +53,13 @@ describe('Semigroup', () => {
   })
 
   it('getProductSemigroup', () => {
-    assert.deepEqual(getProductSemigroup(monoidString, monoidSum).concat(['a', 2], ['b', 3]), ['ab', 5])
+    // tslint:disable-next-line: deprecation
+    assert.deepStrictEqual(getProductSemigroup(monoidString, monoidSum).concat(['a', 2], ['b', 3]), ['ab', 5])
   })
 
   it('getArraySemigroup', () => {
-    assert.deepEqual(getArraySemigroup<number>().concat([1], [2]), [1, 2])
+    // tslint:disable-next-line: deprecation
+    assert.deepStrictEqual(getArraySemigroup<number>().concat([1], [2]), [1, 2])
   })
 
   it('getDictionarySemigroup', () => {
@@ -59,6 +72,7 @@ describe('Semigroup', () => {
       foo: 456,
       fff: 456
     }
+    // tslint:disable-next-line: deprecation
     const S = getDictionarySemigroup(semigroupSum)
     const result = S.concat(foo, bar)
     const expected = {
@@ -66,7 +80,7 @@ describe('Semigroup', () => {
       foo: foo.foo + bar.foo,
       fff: bar.fff
     }
-    assert.deepEqual(result, expected)
+    assert.deepStrictEqual(result, expected)
   })
 
   it('getObjectSemigroup', () => {
@@ -93,10 +107,10 @@ describe('Semigroup', () => {
   })
 
   it('getFirstSemigroup', () => {
-    assert.deepEqual(getFirstSemigroup<number>().concat(1, 2), 1)
+    assert.deepStrictEqual(getFirstSemigroup<number>().concat(1, 2), 1)
   })
 
   it('semigroupVoid', () => {
-    assert.deepEqual(semigroupVoid.concat(undefined, undefined), undefined)
+    assert.deepStrictEqual(semigroupVoid.concat(undefined, undefined), undefined)
   })
 })

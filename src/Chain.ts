@@ -1,8 +1,5 @@
-import { Apply, Apply1, Apply2, Apply2C, Apply3, Apply3C } from './Apply'
-import { HKT, Type, Type2, Type3, URIS, URIS2, URIS3 } from './HKT'
-
 /**
- * The `Chain` type class extends the `Apply` type class with a "chain" operation which composes computations in
+ * @file The `Chain` type class extends the `Apply` type class with a `chain` operation which composes computations in
  * sequence, using the return value of one computation to determine the next computation.
  *
  * Instances must satisfy the following law in addition to the `Apply` laws:
@@ -10,8 +7,11 @@ import { HKT, Type, Type2, Type3, URIS, URIS2, URIS3 } from './HKT'
  * 1. Associativity: `F.chain(F.chain(fa, afb), bfc) <-> F.chain(fa, a => F.chain(afb(a), bfc))`
  *
  * Note. `Apply`'s `ap` can be derived: `(fab, fa) => F.chain(fab, f => F.map(f, fa))`
- *
- * @typeclass
+ */
+import { Apply, Apply1, Apply2, Apply2C, Apply3, Apply3C } from './Apply'
+import { HKT, Type, Type2, Type3, URIS, URIS2, URIS3 } from './HKT'
+
+/**
  * @since 1.0.0
  */
 export interface Chain<F> extends Apply<F> {
@@ -38,6 +38,9 @@ export interface Chain3C<F extends URIS3, U, L> extends Apply3C<F, U, L> {
   readonly chain: <A, B>(fa: Type3<F, U, L, A>, f: (a: A) => Type3<F, U, L, B>) => Type3<F, U, L, B>
 }
 
+/**
+ * @since 1.0.0
+ */
 export function flatten<F extends URIS3>(
   chain: Chain3<F>
 ): <U, L, A>(mma: Type3<F, U, L, Type3<F, U, L, A>>) => Type3<F, U, L, A>
@@ -50,10 +53,6 @@ export function flatten<F extends URIS2, L>(
 ): <A>(mma: Type2<F, L, Type2<F, L, A>>) => Type2<F, L, A>
 export function flatten<F extends URIS>(chain: Chain1<F>): <A>(mma: Type<F, Type<F, A>>) => Type<F, A>
 export function flatten<F>(chain: Chain<F>): <A>(mma: HKT<F, HKT<F, A>>) => HKT<F, A>
-/**
- * @function
- * @since 1.0.0
- */
 export function flatten<F>(chain: Chain<F>): <A>(mma: HKT<F, HKT<F, A>>) => HKT<F, A> {
   return mma => chain.chain(mma, ma => ma)
 }

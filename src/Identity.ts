@@ -3,12 +3,14 @@ import { Applicative } from './Applicative'
 import { ChainRec1, tailRec } from './ChainRec'
 import { Comonad1 } from './Comonad'
 import { Either } from './Either'
-import { Foldable1 } from './Foldable'
+import { Foldable2v1 } from './Foldable2v'
+import { Lazy, toString } from './function'
 import { HKT } from './HKT'
 import { Monad1 } from './Monad'
-import { Setoid } from './Setoid'
-import { Traversable1 } from './Traversable'
-import { Lazy, toString } from './function'
+import { Monoid } from './Monoid'
+import { Setoid, fromEquals } from './Setoid'
+import { Traversable2v1 } from './Traversable2v'
+import { Show } from './Show'
 
 declare module './HKT' {
   interface URI2HKT<A> {
@@ -21,8 +23,6 @@ export const URI = 'Identity'
 export type URI = typeof URI
 
 /**
- * @data
- * @constructor Identity
  * @since 1.0.0
  */
 export class Identity<A> {
@@ -35,6 +35,9 @@ export class Identity<A> {
   ap<B>(fab: Identity<(a: A) => B>): Identity<B> {
     return this.map(fab.value)
   }
+  /**
+   * Flipped version of `ap`
+   */
   ap_<B, C>(this: Identity<(b: B) => C>, fb: Identity<B>): Identity<C> {
     return fb.ap(this)
   }
@@ -49,13 +52,15 @@ export class Identity<A> {
   }
 
   /**
-   * Lazy version of {@link alt}
-   * @since 1.6.0
-   * @param {Lazy<Identity<A>>} fx - thunk
+   * Lazy version of `alt`
+   *
    * @example
+   * import { Identity } from 'fp-ts/lib/Identity'
+   *
    * const a = new Identity(1)
-   * assert.deepEqual(a.altL(() => new Identity(2)), a)
-   * @returns {Identity<A>}
+   * assert.deepStrictEqual(a.orElse(() => new Identity(2)), a)
+   *
+   * @since 1.6.0
    */
   orElse(fx: Lazy<Identity<A>>): Identity<A> {
     return this
@@ -78,13 +83,19 @@ export class Identity<A> {
 }
 
 /**
- * @function
+ * @since 1.17.0
+ */
+export const getShow = <A>(S: Show<A>): Show<Identity<A>> => {
+  return {
+    show: i => `new Identity(${S.show(i.value)})`
+  }
+}
+
+/**
  * @since 1.0.0
  */
-export const getSetoid = <A>(setoid: Setoid<A>): Setoid<Identity<A>> => {
-  return {
-    equals: (x, y) => setoid.equals(x.value, y.value)
-  }
+export const getSetoid = <A>(S: Setoid<A>): Setoid<Identity<A>> => {
+  return fromEquals((x, y) => S.equals(x.value, y.value))
 }
 
 const map = <A, B>(fa: Identity<A>, f: (a: A) => B): Identity<B> => {
@@ -107,6 +118,14 @@ const reduce = <A, B>(fa: Identity<A>, b: B, f: (b: B, a: A) => B): B => {
   return fa.reduce(b, f)
 }
 
+const foldMap = <M>(M: Monoid<M>) => <A>(fa: Identity<A>, f: (a: A) => M): M => {
+  return f(fa.value)
+}
+
+const foldr = <A, B>(fa: Identity<A>, b: B, f: (a: A, b: B) => B): B => {
+  return f(fa.value, b)
+}
+
 const alt = <A>(fx: Identity<A>, fy: Identity<A>): Identity<A> => {
   return fx.alt(fy)
 }
@@ -123,22 +142,33 @@ const chainRec = <A, B>(a: A, f: (a: A) => Identity<Either<A, B>>): Identity<B> 
   return new Identity(tailRec(a => f(a).value, a))
 }
 
-function traverse<F>(F: Applicative<F>): <A, B>(ta: Identity<A>, f: (a: A) => HKT<F, B>) => HKT<F, Identity<B>> {
-  return (ta, f) => F.map(f(ta.value), of)
+const traverse = <F>(F: Applicative<F>) => <A, B>(ta: Identity<A>, f: (a: A) => HKT<F, B>): HKT<F, Identity<B>> => {
+  return F.map(f(ta.value), of)
+}
+
+const sequence = <F>(F: Applicative<F>) => <A>(ta: Identity<HKT<F, A>>): HKT<F, Identity<A>> => {
+  return F.map(ta.value, of)
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
-export const identity: Monad1<URI> & Foldable1<URI> & Traversable1<URI> & Alt1<URI> & Comonad1<URI> & ChainRec1<URI> = {
+export const identity: Monad1<URI> &
+  Foldable2v1<URI> &
+  Traversable2v1<URI> &
+  Alt1<URI> &
+  Comonad1<URI> &
+  ChainRec1<URI> = {
   URI,
   map,
   of,
   ap,
   chain,
   reduce,
+  foldMap,
+  foldr,
   traverse,
+  sequence,
   alt,
   extract,
   extend,

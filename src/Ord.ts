@@ -1,10 +1,5 @@
-import { Ordering, semigroupOrdering } from './Ordering'
-import { Semigroup } from './Semigroup'
-import { Setoid, getProductSetoid, setoidBoolean, setoidNumber, setoidString } from './Setoid'
-import { on } from './function'
-
 /**
- * The `Ord` type class represents types which support comparisons with a _total order_.
+ * @file The `Ord` type class represents types which support comparisons with a _total order_.
  *
  * Instances should satisfy the laws of total orderings:
  *
@@ -12,7 +7,14 @@ import { on } from './function'
  * 2. Antisymmetry: if `S.compare(a, b) <= 0` and `S.compare(b, a) <= 0` then `a <-> b`
  * 3. Transitivity: if `S.compare(a, b) <= 0` and `S.compare(b, c) <= 0` then `S.compare(a, c) <= 0`
  *
- * @typeclass
+ * See [Getting started with fp-ts: Ord](https://dev.to/gcanti/getting-started-with-fp-ts-ord-5f1e)
+ */
+import { Ordering, semigroupOrdering } from './Ordering'
+import { Semigroup } from './Semigroup'
+import { Setoid, setoidBoolean, setoidNumber, setoidString } from './Setoid'
+import { on } from './function'
+
+/**
  * @since 1.0.0
  */
 export interface Ord<A> extends Setoid<A> {
@@ -20,7 +22,6 @@ export interface Ord<A> extends Setoid<A> {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const unsafeCompare = (x: any, y: any): Ordering => {
@@ -28,7 +29,6 @@ export const unsafeCompare = (x: any, y: any): Ordering => {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const ordString: Ord<string> = {
@@ -37,7 +37,6 @@ export const ordString: Ord<string> = {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const ordNumber: Ord<number> = {
@@ -46,7 +45,6 @@ export const ordNumber: Ord<number> = {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const ordBoolean: Ord<boolean> = {
@@ -56,7 +54,7 @@ export const ordBoolean: Ord<boolean> = {
 
 /**
  * Test whether one value is _strictly less than_ another
- * @function
+ *
  * @since 1.0.0
  */
 export const lessThan = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
@@ -65,7 +63,7 @@ export const lessThan = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
 
 /**
  * Test whether one value is _strictly greater than_ another
- * @function
+ *
  * @since 1.0.0
  */
 export const greaterThan = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
@@ -74,7 +72,7 @@ export const greaterThan = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
 
 /**
  * Test whether one value is _non-strictly less than_ another
- * @function
+ *
  * @since 1.0.0
  */
 export const lessThanOrEq = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
@@ -83,7 +81,7 @@ export const lessThanOrEq = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
 
 /**
  * Test whether one value is _non-strictly greater than_ another
- * @function
+ *
  * @since 1.0.0
  */
 export const greaterThanOrEq = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
@@ -92,7 +90,7 @@ export const greaterThanOrEq = <A>(O: Ord<A>) => (x: A, y: A): boolean => {
 
 /**
  * Take the minimum of two values. If they are considered equal, the first argument is chosen
- * @function
+ *
  * @since 1.0.0
  */
 export const min = <A>(O: Ord<A>) => (x: A, y: A): A => {
@@ -101,7 +99,7 @@ export const min = <A>(O: Ord<A>) => (x: A, y: A): A => {
 
 /**
  * Take the maximum of two values. If they are considered equal, the first argument is chosen
- * @function
+ *
  * @since 1.0.0
  */
 export const max = <A>(O: Ord<A>) => (x: A, y: A): A => {
@@ -110,7 +108,7 @@ export const max = <A>(O: Ord<A>) => (x: A, y: A): A => {
 
 /**
  * Clamp a value between a minimum and a maximum
- * @function
+ *
  * @since 1.0.0
  */
 export const clamp = <A>(O: Ord<A>): ((low: A, hi: A) => (x: A) => A) => {
@@ -121,7 +119,7 @@ export const clamp = <A>(O: Ord<A>): ((low: A, hi: A) => (x: A) => A) => {
 
 /**
  * Test whether a value is between a minimum and a maximum (inclusive)
- * @function
+ *
  * @since 1.0.0
  */
 export const between = <A>(O: Ord<A>): ((low: A, hi: A) => (x: A) => boolean) => {
@@ -131,18 +129,17 @@ export const between = <A>(O: Ord<A>): ((low: A, hi: A) => (x: A) => boolean) =>
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const fromCompare = <A>(compare: (x: A, y: A) => Ordering): Ord<A> => {
+  const optimizedCompare = (x: A, y: A): Ordering => (x === y ? 0 : compare(x, y))
   return {
-    equals: (x, y) => compare(x, y) === 0,
-    compare
+    equals: (x, y) => optimizedCompare(x, y) === 0,
+    compare: optimizedCompare
   }
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const contramap = <A, B>(f: (b: B) => A, fa: Ord<A>): Ord<B> => {
@@ -150,7 +147,6 @@ export const contramap = <A, B>(f: (b: B) => A, fa: Ord<A>): Ord<B> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getSemigroup = <A = never>(): Semigroup<Ord<A>> => {
@@ -160,22 +156,44 @@ export const getSemigroup = <A = never>(): Semigroup<Ord<A>> => {
 }
 
 /**
- * @function
- * @since 1.0.0
+ * Given a tuple of `Ord`s returns an `Ord` for the tuple
+ *
+ * @example
+ * import { getTupleOrd, ordString, ordNumber, ordBoolean } from 'fp-ts/lib/Ord'
+ *
+ * const O = getTupleOrd(ordString, ordNumber, ordBoolean)
+ * assert.strictEqual(O.compare(['a', 1, true], ['b', 2, true]), -1)
+ * assert.strictEqual(O.compare(['a', 1, true], ['a', 2, true]), -1)
+ * assert.strictEqual(O.compare(['a', 1, true], ['a', 1, false]), 1)
+ *
+ * @since 1.14.3
  */
-export const getProductOrd = <A, B>(OA: Ord<A>, OB: Ord<B>): Ord<[A, B]> => {
-  const S = getProductSetoid(OA, OB)
-  return {
-    ...S,
-    compare: ([xa, xb], [ya, yb]) => {
-      const r = OA.compare(xa, ya)
-      return r === 0 ? OB.compare(xb, yb) : r
+export const getTupleOrd = <T extends Array<Ord<any>>>(
+  ...ords: T
+): Ord<{ [K in keyof T]: T[K] extends Ord<infer A> ? A : never }> => {
+  const len = ords.length
+  return fromCompare((x, y) => {
+    let i = 0
+    for (; i < len - 1; i++) {
+      const r = ords[i].compare(x[i], y[i])
+      if (r !== 0) {
+        return r
+      }
     }
-  }
+    return ords[i].compare(x[i], y[i])
+  })
 }
 
 /**
- * @function
+ * Use `getTupleOrd` instead
+ * @since 1.0.0
+ * @deprecated
+ */
+export const getProductOrd = <A, B>(OA: Ord<A>, OB: Ord<B>): Ord<[A, B]> => {
+  return getTupleOrd(OA, OB)
+}
+
+/**
  * @since 1.3.0
  */
 export const getDualOrd = <A>(O: Ord<A>): Ord<A> => {
@@ -183,7 +201,6 @@ export const getDualOrd = <A>(O: Ord<A>): Ord<A> => {
 }
 
 /**
- * @instance
  * @since 1.4.0
  */
 export const ordDate: Ord<Date> = contramap(date => date.valueOf(), ordNumber)

@@ -1,17 +1,18 @@
+/**
+ * @file Adapted from https://github.com/parsonsmatt/purescript-pair
+ */
 import { Applicative, Applicative1 } from './Applicative'
-import { liftA2 } from './Apply'
 import { Comonad1 } from './Comonad'
-import { Foldable1 } from './Foldable'
+import { Foldable2v1 } from './Foldable2v'
+import { Endomorphism } from './function'
 import { HKT } from './HKT'
 import { Monoid } from './Monoid'
-import { Ord } from './Ord'
+import { Ord, fromCompare } from './Ord'
 import { semigroupOrdering } from './Ordering'
 import { Semigroup } from './Semigroup'
-import { Setoid } from './Setoid'
-import { Traversable1 } from './Traversable'
-import { Endomorphism } from './function'
-
-// Adapted from https://github.com/parsonsmatt/purescript-pair
+import { Setoid, fromEquals } from './Setoid'
+import { Traversable2v1 } from './Traversable2v'
+import { Show } from './Show'
 
 declare module './HKT' {
   interface URI2HKT<A> {
@@ -50,6 +51,9 @@ export class Pair<A> {
   ap<B>(fab: Pair<(a: A) => B>): Pair<B> {
     return new Pair(fab.fst(this.fst), fab.snd(this.snd))
   }
+  /**
+   * Flipped version of `ap`
+   */
   ap_<B, C>(this: Pair<(b: B) => C>, fb: Pair<B>): Pair<C> {
     return fb.ap(this)
   }
@@ -61,6 +65,15 @@ export class Pair<A> {
   }
   extend<B>(f: (fb: Pair<A>) => B): Pair<B> {
     return new Pair(f(this), f(this.swap()))
+  }
+}
+
+/**
+ * @since 1.17.0
+ */
+export const getShow = <L, A>(S: Show<A>): Show<Pair<A>> => {
+  return {
+    show: p => `new Pair(${S.show(p.fst)}, ${S.show(p.snd)})`
   }
 }
 
@@ -80,6 +93,14 @@ const reduce = <A, B>(fa: Pair<A>, b: B, f: (b: B, a: A) => B): B => {
   return fa.reduce(b, f)
 }
 
+const foldMap = <M>(M: Monoid<M>) => <A>(fa: Pair<A>, f: (a: A) => M): M => {
+  return M.concat(f(fa.fst), f(fa.snd))
+}
+
+const foldr = <A, B>(fa: Pair<A>, b: B, f: (a: A, b: B) => B): B => {
+  return f(fa.fst, f(fa.snd, b))
+}
+
 const extract = <A>(fa: Pair<A>): A => {
   return fa.extract()
 }
@@ -89,28 +110,20 @@ const extend = <A, B>(fa: Pair<A>, f: (fb: Pair<A>) => B): Pair<B> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getSetoid = <A>(S: Setoid<A>): Setoid<Pair<A>> => {
-  return {
-    equals: (x, y) => S.equals(x.fst, y.fst) && S.equals(x.snd, y.snd)
-  }
+  return fromEquals((x, y) => S.equals(x.fst, y.fst) && S.equals(x.snd, y.snd))
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getOrd = <A>(O: Ord<A>): Ord<Pair<A>> => {
-  return {
-    ...getSetoid(O),
-    compare: (x, y) => semigroupOrdering.concat(O.compare(x.fst, y.fst), O.compare(x.snd, y.snd))
-  }
+  return fromCompare((x, y) => semigroupOrdering.concat(O.compare(x.fst, y.fst), O.compare(x.snd, y.snd)))
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<Pair<A>> => {
@@ -120,7 +133,6 @@ export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<Pair<A>> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getMonoid = <A>(M: Monoid<A>): Monoid<Pair<A>> => {
@@ -130,22 +142,27 @@ export const getMonoid = <A>(M: Monoid<A>): Monoid<Pair<A>> => {
   }
 }
 
-function traverse<F>(F: Applicative<F>): <A, B>(ta: Pair<A>, f: (a: A) => HKT<F, B>) => HKT<F, Pair<B>> {
-  return <A, B>(ta: Pair<A>, f: (a: A) => HKT<F, B>) =>
-    liftA2(F)((b1: B) => (b2: B) => new Pair(b1, b2))(f(ta.fst))(f(ta.snd))
+const traverse = <F>(F: Applicative<F>) => <A, B>(ta: Pair<A>, f: (a: A) => HKT<F, B>): HKT<F, Pair<B>> => {
+  return F.ap(F.map(f(ta.fst), (b1: B) => (b2: B) => new Pair(b1, b2)), f(ta.snd))
+}
+
+const sequence = <F>(F: Applicative<F>) => <A>(ta: Pair<HKT<F, A>>): HKT<F, Pair<A>> => {
+  return F.ap(F.map(ta.fst, (a1: A) => (a2: A) => new Pair(a1, a2)), ta.snd)
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
-export const pair: Applicative1<URI> & Foldable1<URI> & Traversable1<URI> & Comonad1<URI> = {
+export const pair: Applicative1<URI> & Foldable2v1<URI> & Traversable2v1<URI> & Comonad1<URI> = {
   URI,
   map,
   of,
   ap,
   reduce,
+  foldMap,
+  foldr,
   traverse,
+  sequence,
   extend,
   extract
 }

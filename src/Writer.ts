@@ -2,7 +2,7 @@ import { Functor2 } from './Functor'
 import { Monad2C } from './Monad'
 import { Monoid } from './Monoid'
 import { Semigroup } from './Semigroup'
-import { phantom, tuple } from './function'
+import { phantom } from './function'
 
 declare module './HKT' {
   interface URI2HKT2<L, A> {
@@ -15,8 +15,6 @@ export const URI = 'Writer'
 export type URI = typeof URI
 
 /**
- * @data
- * @constructor Writer
  * @since 1.0.0
  */
 export class Writer<W, A> {
@@ -64,7 +62,7 @@ const chain = <W>(S: Semigroup<W>) => <A, B>(fa: Writer<W, A>, f: (a: A) => Writ
 
 /**
  * Appends a value to the accumulator
- * @function
+ *
  * @since 1.0.0
  */
 export const tell = <W>(w: W): Writer<W, void> => {
@@ -73,19 +71,19 @@ export const tell = <W>(w: W): Writer<W, void> => {
 
 /**
  * Modifies the result to include the changes to the accumulator
- * @function
+ *
  * @since 1.3.0
  */
 export const listen = <W, A>(fa: Writer<W, A>): Writer<W, [A, W]> => {
   return new Writer(() => {
     const [a, w] = fa.run()
-    return [tuple(a, w), w]
+    return [[a, w], w]
   })
 }
 
 /**
  * Applies the returned function to the accumulator
- * @function
+ *
  * @since 1.3.0
  */
 export const pass = <W, A>(fa: Writer<W, [A, (w: W) => W]>): Writer<W, A> => {
@@ -97,19 +95,19 @@ export const pass = <W, A>(fa: Writer<W, [A, (w: W) => W]>): Writer<W, A> => {
 
 /**
  * Projects a value from modifications made to the accumulator during an action
- * @function
+ *
  * @since 1.3.0
  */
 export const listens = <W, A, B>(fa: Writer<W, A>, f: (w: W) => B): Writer<W, [A, B]> => {
   return new Writer(() => {
     const [a, w] = fa.run()
-    return [tuple(a, f(w)), w]
+    return [[a, f(w)], w]
   })
 }
 
 /**
  * Modify the final accumulator value by applying a function
- * @function
+ *
  * @since 1.3.0
  */
 export const censor = <W, A>(fa: Writer<W, A>, f: (w: W) => W): Writer<W, A> => {
@@ -120,7 +118,7 @@ export const censor = <W, A>(fa: Writer<W, A>, f: (w: W) => W): Writer<W, A> => 
 }
 
 /**
- * @function
+ *
  * @since 1.0.0
  */
 export const getMonad = <W>(M: Monoid<W>): Monad2C<URI, W> => {
@@ -135,7 +133,6 @@ export const getMonad = <W>(M: Monoid<W>): Monad2C<URI, W> => {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const writer: Functor2<URI> = {

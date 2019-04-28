@@ -1,26 +1,24 @@
 import { Bounded } from './Bounded'
-import { compose, Endomorphism, identity } from './function'
+import { compose, Endomorphism, identity, concat } from './function'
 import {
   fold as foldSemigroup,
-  getArraySemigroup,
   getDictionarySemigroup,
   getDualSemigroup,
   getFunctionSemigroup,
   getJoinSemigroup,
   getMeetSemigroup,
-  getProductSemigroup,
-  getRecordSemigroup,
   Semigroup,
   semigroupAll,
   semigroupAny,
   semigroupProduct,
   semigroupString,
   semigroupSum,
-  semigroupVoid
+  semigroupVoid,
+  getStructSemigroup,
+  getTupleSemigroup
 } from './Semigroup'
 
 /**
- * @typeclass
  * @since 1.0.0
  */
 export interface Monoid<A> extends Semigroup<A> {
@@ -28,7 +26,6 @@ export interface Monoid<A> extends Semigroup<A> {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const fold = <A>(M: Monoid<A>): ((as: Array<A>) => A) => {
@@ -36,18 +33,38 @@ export const fold = <A>(M: Monoid<A>): ((as: Array<A>) => A) => {
 }
 
 /**
- * @function
+ * Given a tuple of monoids returns a monoid for the tuple
+ *
+ * @example
+ * import { getTupleMonoid, monoidString, monoidSum, monoidAll } from 'fp-ts/lib/Monoid'
+ *
+ * const M1 = getTupleMonoid(monoidString, monoidSum)
+ * assert.deepStrictEqual(M1.concat(['a', 1], ['b', 2]), ['ab', 3])
+ *
+ * const M2 = getTupleMonoid(monoidString, monoidSum, monoidAll)
+ * assert.deepStrictEqual(M2.concat(['a', 1, true], ['b', 2, false]), ['ab', 3, false])
+ *
  * @since 1.0.0
  */
-export const getProductMonoid = <A, B>(MA: Monoid<A>, MB: Monoid<B>): Monoid<[A, B]> => {
+export const getTupleMonoid = <T extends Array<Monoid<any>>>(
+  ...monoids: T
+): Monoid<{ [K in keyof T]: T[K] extends Semigroup<infer A> ? A : never }> => {
   return {
-    ...getProductSemigroup(MA, MB),
-    empty: [MA.empty, MB.empty]
-  }
+    ...getTupleSemigroup(...monoids),
+    empty: monoids.map(m => m.empty)
+  } as any
 }
 
 /**
- * @function
+ * Use `getTupleMonoid` instead
+ * @since 1.0.0
+ * @deprecated
+ */
+export const getProductMonoid = <A, B>(MA: Monoid<A>, MB: Monoid<B>): Monoid<[A, B]> => {
+  return getTupleMonoid(MA, MB)
+}
+
+/**
  * @since 1.0.0
  */
 export const getDualMonoid = <A>(M: Monoid<A>): Monoid<A> => {
@@ -59,7 +76,6 @@ export const getDualMonoid = <A>(M: Monoid<A>): Monoid<A> => {
 
 /**
  * Boolean monoid under conjunction
- * @instance
  * @since 1.0.0
  */
 export const monoidAll: Monoid<boolean> = {
@@ -69,7 +85,6 @@ export const monoidAll: Monoid<boolean> = {
 
 /**
  * Boolean monoid under disjunction
- * @instance
  * @since 1.0.0
  */
 export const monoidAny: Monoid<boolean> = {
@@ -80,17 +95,16 @@ export const monoidAny: Monoid<boolean> = {
 const emptyArray: Array<any> = []
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const unsafeMonoidArray: Monoid<Array<any>> = {
-  ...getArraySemigroup(),
+  concat,
   empty: emptyArray
 }
 
 /**
- * Monoid under array concatenation (`Array<any>`)
- * @function
+ * `Monoid` under array concatenation
+ *
  * @since 1.0.0
  */
 export const getArrayMonoid = <A = never>(): Monoid<Array<A>> => {
@@ -100,22 +114,22 @@ export const getArrayMonoid = <A = never>(): Monoid<Array<A>> => {
 const emptyObject = {}
 
 /**
- * Gets {@link Monoid} instance for dictionaries given {@link Semigroup} instance for their values
- * @function
+ * Use `Record`'s `getMonoid`
  * @since 1.4.0
- * @param S - {@link Semigroup} instance for dictionary values
- * @example
- * const M = getDictionaryMonoid(semigroupSum)
- * const result = fold(M)([{ foo: 123 }, { foo: 456 }]) // { foo: 123 + 456 }
+ * @deprecated
  */
-export const getDictionaryMonoid = <A>(S: Semigroup<A>): Monoid<{ [key: string]: A }> => ({
-  ...getDictionarySemigroup(S),
-  empty: emptyObject
-})
+export function getDictionaryMonoid<K extends string, A>(S: Semigroup<A>): Monoid<Record<K, A>>
+export function getDictionaryMonoid<A>(S: Semigroup<A>): Monoid<{ [key: string]: A }>
+export function getDictionaryMonoid<A>(S: Semigroup<A>): Monoid<{ [key: string]: A }> {
+  return {
+    // tslint:disable-next-line: deprecation
+    ...getDictionarySemigroup(S),
+    empty: emptyObject
+  }
+}
 
 /**
  * Number monoid under addition
- * @instance
  * @since 1.0.0
  */
 export const monoidSum: Monoid<number> = {
@@ -125,7 +139,6 @@ export const monoidSum: Monoid<number> = {
 
 /**
  * Number monoid under multiplication
- * @instance
  * @since 1.0.0
  */
 export const monoidProduct: Monoid<number> = {
@@ -134,7 +147,6 @@ export const monoidProduct: Monoid<number> = {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const monoidString: Monoid<string> = {
@@ -143,7 +155,6 @@ export const monoidString: Monoid<string> = {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const monoidVoid: Monoid<void> = {
@@ -152,7 +163,6 @@ export const monoidVoid: Monoid<void> = {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getFunctionMonoid = <M>(M: Monoid<M>) => <A = never>(): Monoid<(a: A) => M> => {
@@ -163,7 +173,6 @@ export const getFunctionMonoid = <M>(M: Monoid<M>) => <A = never>(): Monoid<(a: 
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getEndomorphismMonoid = <A = never>(): Monoid<Endomorphism<A>> => {
@@ -174,25 +183,33 @@ export const getEndomorphismMonoid = <A = never>(): Monoid<Endomorphism<A>> => {
 }
 
 /**
- * @function
- * @since 1.0.0
+ * @since 1.14.0
  */
-export const getRecordMonoid = <O extends { [key: string]: any }>(
+export const getStructMonoid = <O extends { [key: string]: any }>(
   monoids: { [K in keyof O]: Monoid<O[K]> }
 ): Monoid<O> => {
   const empty: any = {}
-  const keys = Object.keys(monoids)
-  for (const key of keys) {
+  for (const key of Object.keys(monoids)) {
     empty[key] = monoids[key].empty
   }
   return {
-    ...getRecordSemigroup<O>(monoids),
+    ...getStructSemigroup<O>(monoids),
     empty
   }
 }
 
 /**
- * @function
+ * Use `getStructMonoid` instead
+ * @since 1.0.0
+ * @deprecated
+ */
+export const getRecordMonoid = <O extends { [key: string]: any }>(
+  monoids: { [K in keyof O]: Monoid<O[K]> }
+): Monoid<O> => {
+  return getStructMonoid(monoids)
+}
+
+/**
  * @since 1.9.0
  */
 export const getMeetMonoid = <A>(B: Bounded<A>): Monoid<A> => {
@@ -203,7 +220,6 @@ export const getMeetMonoid = <A>(B: Bounded<A>): Monoid<A> => {
 }
 
 /**
- * @function
  * @since 1.9.0
  */
 export const getJoinMonoid = <A>(B: Bounded<A>): Monoid<A> => {

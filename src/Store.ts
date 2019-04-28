@@ -14,8 +14,6 @@ export const URI = 'Store'
 export type URI = typeof URI
 
 /**
- * @data
- * @constructor Store
  * @since 1.0.0
  */
 export class Store<S, A> {
@@ -58,7 +56,7 @@ const extend = <S, A, B>(sa: Store<S, A>, f: (sa: Store<S, A>) => B): Store<S, B
 
 /**
  * Extract a value from a position which depends on the current position
- * @function
+ *
  * @since 1.0.0
  */
 export const peeks = <S>(f: Endomorphism<S>) => <A>(sa: Store<S, A>) => (s: S): A => {
@@ -67,14 +65,18 @@ export const peeks = <S>(f: Endomorphism<S>) => <A>(sa: Store<S, A>) => (s: S): 
 
 /**
  * Reposition the focus at the specified position, which depends on the current position
- * @function
+ *
  * @since 1.0.0
  */
 export const seeks = <S>(f: Endomorphism<S>) => <A>(sa: Store<S, A>): Store<S, A> => {
   return new Store(sa.peek, f(sa.pos))
 }
 
-/** Extract a collection of values from positions which depend on the current position */
+/**
+ * Extract a collection of values from positions which depend on the current position
+ *
+ * @since 1.0.0
+ */
 export function experiment<F extends URIS3>(
   F: Functor3<F>
 ): <U, L, S>(f: (s: S) => HKT3<F, U, L, S>) => <A>(sa: Store<S, A>) => Type3<F, U, L, A>
@@ -85,17 +87,11 @@ export function experiment<F extends URIS>(
   F: Functor<F>
 ): <S>(f: (s: S) => HKT<F, S>) => <A>(sa: Store<S, A>) => Type<F, A>
 export function experiment<F>(F: Functor<F>): <S>(f: (s: S) => HKT<F, S>) => <A>(sa: Store<S, A>) => HKT<F, A>
-/**
- * Extract a collection of values from positions which depend on the current position
- * @function
- * @since 1.0.0
- */
 export function experiment<F>(F: Functor<F>): <S>(f: (s: S) => HKT<F, S>) => <A>(sa: Store<S, A>) => HKT<F, A> {
   return f => sa => F.map(f(sa.pos), s => sa.peek(s))
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const store: Comonad2<URI> = {

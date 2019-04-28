@@ -1,10 +1,15 @@
-import { Bifunctor2 } from './Bifunctor'
-import { Either, left as eitherLeft, tryCatch as eitherTryCatch, toError } from './Either'
-import * as eitherT from './EitherT'
-import { Monad2 } from './Monad'
-import { IO, io } from './IO'
-import { Lazy, constIdentity, constant } from './function'
+/**
+ * @file `IOEither<L, A>` represents a synchronous computation that either yields a value of type `A` or fails yielding an
+ * error of type `L`. If you want to represent a synchronous computation that never fails, please see `IO`.
+ */
 import { Alt2 } from './Alt'
+import { Bifunctor2 } from './Bifunctor'
+import { Either, left as eitherLeft, right as eitherRight, toError, tryCatch2v as eitherTryCatch2v } from './Either'
+import * as eitherT from './EitherT'
+import { constant, constIdentity, Lazy } from './function'
+import { IO, io } from './IO'
+import { Monad2 } from './Monad'
+import { MonadThrow2 } from './MonadThrow'
 
 declare module './HKT' {
   interface URI2HKT2<L, A> {
@@ -12,19 +17,14 @@ declare module './HKT' {
   }
 }
 
-const eitherTIO = eitherT.getEitherT(io)
-
 export const URI = 'IOEither'
 
 export type URI = typeof URI
 
-const eitherTfold = eitherT.fold(io)
-const eitherTmapLeft = eitherT.mapLeft(io)
-const eitherTbimap = eitherT.bimap(io)
+const T = eitherT.getEitherT2v(io)
+const foldT = eitherT.fold(io)
 
 /**
- * @data
- * @constructor IOEither
  * @since 1.6.0
  */
 export class IOEither<L, A> {
@@ -34,78 +34,51 @@ export class IOEither<L, A> {
   constructor(readonly value: IO<Either<L, A>>) {}
   /**
    * Runs the inner io
-   * @since 1.6.0
    */
   run(): Either<L, A> {
     return this.value.run()
   }
-  /**
-   * @since 1.6.0
-   */
   map<B>(f: (a: A) => B): IOEither<L, B> {
-    return new IOEither(eitherTIO.map(this.value, f))
+    return new IOEither(T.map(this.value, f))
   }
-  /**
-   * @since 1.6.0
-   */
   ap<B>(fab: IOEither<L, (a: A) => B>): IOEither<L, B> {
-    return new IOEither(eitherTIO.ap(fab.value, this.value))
+    return new IOEither(T.ap(fab.value, this.value))
   }
   /**
-   * @since 1.6.0
+   * Flipped version of `ap`
    */
   ap_<B, C>(this: IOEither<L, (b: B) => C>, fb: IOEither<L, B>): IOEither<L, C> {
     return fb.ap(this)
   }
   /**
    * Combine two effectful actions, keeping only the result of the first
-   * @since 1.6.0
    */
   applyFirst<B>(fb: IOEither<L, B>): IOEither<L, A> {
     return fb.ap(this.map(constant))
   }
   /**
    * Combine two effectful actions, keeping only the result of the second
-   * @since 1.6.0
    */
   applySecond<B>(fb: IOEither<L, B>): IOEither<L, B> {
     return fb.ap(this.map(constIdentity as () => (b: B) => B))
   }
-  /**
-   * @since 1.6.0
-   */
   chain<B>(f: (a: A) => IOEither<L, B>): IOEither<L, B> {
-    return new IOEither(eitherTIO.chain(a => f(a).value, this.value))
+    return new IOEither(T.chain(this.value, a => f(a).value))
   }
-  /**
-   * @since 1.6.0
-   */
   fold<R>(left: (l: L) => R, right: (a: A) => R): IO<R> {
-    return eitherTfold(left, right, this.value)
+    return foldT(left, right, this.value)
   }
-  /**
-   * @since 1.6.0
-   */
   mapLeft<M>(f: (l: L) => M): IOEither<M, A> {
-    return new IOEither(eitherTmapLeft(f)(this.value))
+    return new IOEither(this.value.map(e => e.mapLeft(f)))
   }
-  /**
-   * @since 1.6.0
-   */
   orElse<M>(f: (l: L) => IOEither<M, A>): IOEither<M, A> {
-    return new IOEither(this.value.chain(e => e.fold(l => f(l).value, a => eitherTIO.of(a))))
+    return new IOEither(this.value.chain(e => e.fold(l => f(l).value, a => T.of(a))))
   }
-  /**
-   * @since 1.6.0
-   */
   alt(fy: IOEither<L, A>): IOEither<L, A> {
     return this.orElse(() => fy)
   }
-  /**
-   * @since 1.6.0
-   */
   bimap<V, B>(f: (l: L) => V, g: (a: A) => B): IOEither<V, B> {
-    return new IOEither(eitherTbimap(this.value, f, g))
+    return new IOEither(this.value.map(e => e.bimap(f, g)))
   }
 }
 
@@ -114,7 +87,7 @@ const map = <L, A, B>(fa: IOEither<L, A>, f: (a: A) => B): IOEither<L, B> => {
 }
 
 const of = <L, A>(a: A): IOEither<L, A> => {
-  return new IOEither(eitherTIO.of(a))
+  return new IOEither(T.of(a))
 }
 
 const ap = <L, A, B>(fab: IOEither<L, (a: A) => B>, fa: IOEither<L, A>): IOEither<L, B> => {
@@ -133,38 +106,28 @@ const bimap = <L, V, A, B>(fa: IOEither<L, A>, f: (l: L) => V, g: (a: A) => B): 
   return fa.bimap(f, g)
 }
 
-const eitherTright = eitherT.right(io)
-
 /**
- * @function
  * @since 1.6.0
  */
 export const right = <L, A>(fa: IO<A>): IOEither<L, A> => {
-  return new IOEither(eitherTright(fa))
+  return new IOEither(fa.map<Either<L, A>>(eitherRight))
 }
 
-const eitherTleft = eitherT.left(io)
-
 /**
- * @function
  * @since 1.6.0
  */
 export const left = <L, A>(fa: IO<L>): IOEither<L, A> => {
-  return new IOEither(eitherTleft(fa))
+  return new IOEither(fa.map<Either<L, A>>(eitherLeft))
 }
 
-const eitherTfromEither = eitherT.fromEither(io)
-
 /**
- * @function
  * @since 1.6.0
  */
 export const fromEither = <L, A>(fa: Either<L, A>): IOEither<L, A> => {
-  return new IOEither(eitherTfromEither(fa))
+  return new IOEither(io.of(fa))
 }
 
 /**
- * @function
  * @since 1.6.0
  */
 export const fromLeft = <L, A>(l: L): IOEither<L, A> => {
@@ -172,23 +135,36 @@ export const fromLeft = <L, A>(l: L): IOEither<L, A> => {
 }
 
 /**
- * @function
+ * Use `tryCatch2v` instead
+ *
  * @since 1.6.0
+ * @deprecated
  */
-export const tryCatch = <A>(f: Lazy<A>, onerror: (reason: {}) => Error = toError): IOEither<Error, A> => {
-  return new IOEither(new IO(() => eitherTryCatch(f, onerror)))
+export const tryCatch = <A>(f: Lazy<A>, onerror: (reason: unknown) => Error = toError): IOEither<Error, A> => {
+  return tryCatch2v(f, onerror)
 }
 
 /**
- * @instance
+ * @since 1.11.0
+ */
+export const tryCatch2v = <L, A>(f: Lazy<A>, onerror: (reason: unknown) => L): IOEither<L, A> => {
+  return new IOEither(new IO(() => eitherTryCatch2v(f, onerror)))
+}
+
+const throwError = fromLeft
+
+/**
  * @since 1.6.0
  */
-export const ioEither: Monad2<URI> & Bifunctor2<URI> & Alt2<URI> = {
+export const ioEither: Monad2<URI> & Bifunctor2<URI> & Alt2<URI> & MonadThrow2<URI> = {
   URI,
   bimap,
   map,
   of,
   ap,
   chain,
-  alt
+  alt,
+  throwError,
+  fromEither,
+  fromOption: (o, e) => (o.isNone() ? throwError(e) : of(o.value))
 }

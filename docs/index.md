@@ -1,82 +1,39 @@
-# API
+---
+title: Introduction
+permalink: /
+nav_order: 1
+has_children: true
+has_toc: false
+---
 
-- [Alt](./Alt.md)
-- [Alternative](./Alternative.md)
-- [Applicative](./Applicative.md)
-- [Apply](./Apply.md)
-- [Array](./Array.md)
-- [Bifunctor](./Bifunctor.md)
-- [BooleanAlgebra](./BooleanAlgebra.md)
-- [Bounded](./Bounded.md)
-- [BoundedDistributiveLattice](./BoundedDistributiveLattice.md)
-- [BoundedJoinSemilattice](./BoundedJoinSemilattice.md)
-- [BoundedLattice](./BoundedLattice.md)
-- [BoundedMeetSemilattice](./BoundedMeetSemilattice.md)
-- [Category](./Category.md)
-- [Chain](./Chain.md)
-- [ChainRec](./ChainRec.md)
-- [Comonad](./Comonad.md)
-- [Compactable](./Compactable.md)
-- [Console](./Console.md)
-- [Const](./Const.md)
-- [Contravariant](./Contravariant.md)
-- [DistributiveLattice](./DistributiveLattice.md)
-- [Either](./Either.md)
-- [EitherT](./EitherT.md)
-- [Exception](./Exception.md)
-- [Extend](./Extend.md)
-- [Field](./Field.md)
-- [Filterable](./Filterable.md)
-- [Foldable](./Foldable.md)
-- [Free](./Free.md)
-- [Functor](./Functor.md)
-- [HKT](./HKT.md)
-- [HeytingAlgebra](./HeytingAlgebra.md)
-- [IO](./IO.md)
-- [IOEither](./IOEither.md)
-- [IORef](./IORef.md)
-- [Identity](./Identity.md)
-- [Invariant](./Invariant.md)
-- [IxIO](./IxIO.md)
-- [IxMonad](./IxMonad.md)
-- [JoinSemilattice](./JoinSemilattice.md)
-- [Lattice](./Lattice.md)
-- [MeetSemilattice](./MeetSemilattice.md)
-- [Monad](./Monad.md)
-- [Monoid](./Monoid.md)
-- [Monoidal](./Monoidal.md)
-- [NonEmptyArray](./NonEmptyArray.md)
-- [Option](./Option.md)
-- [OptionT](./OptionT.md)
-- [Ord](./Ord.md)
-- [Ordering](./Ordering.md)
-- [Pair](./Pair.md)
-- [Plus](./Plus.md)
-- [Profunctor](./Profunctor.md)
-- [Random](./Random.md)
-- [Reader](./Reader.md)
-- [ReaderT](./ReaderT.md)
-- [ReaderTaskEither](./ReaderTaskEither.md)
-- [Ring](./Ring.md)
-- [Semigroup](./Semigroup.md)
-- [Semigroupoid](./Semigroupoid.md)
-- [Semiring](./Semiring.md)
-- [Set](./Set.md)
-- [Setoid](./Setoid.md)
-- [State](./State.md)
-- [StateT](./StateT.md)
-- [Store](./Store.md)
-- [StrMap](./StrMap.md)
-- [Task](./Task.md)
-- [TaskEither](./TaskEither.md)
-- [These](./These.md)
-- [Trace](./Trace.md)
-- [Traversable](./Traversable.md)
-- [Tree](./Tree.md)
-- [Tuple](./Tuple.md)
-- [Unfoldable](./Unfoldable.md)
-- [Validation](./Validation.md)
-- [Witherable](./Witherable.md)
-- [Writer](./Writer.md)
-- [Zipper](./Zipper.md)
-- [function](./function.md)
+<img alt="fp-ts logo" src="./fp-ts-logo.png" style="display: block; width: 200px; margin-bottom: 2em;">
+
+# Typed functional programming in TypeScript
+
+fp-ts provides developers with popular patterns and reliable abstractions from typed functional languages in TypeScript.
+{: .fs-6 .fw-300 }
+
+[Get started](./introduction/core-concepts){: .btn .btn-primary .fs-5 .mb-4 .mb-md-0 .mr-2 } [Take the tutorial](./basics/){: .btn .fs-5 .mb-4 .mb-md-0 }
+
+---
+
+## Installation
+
+To install the stable version:
+
+```
+npm install fp-ts
+```
+
+Make sure to always have a single version of `fp-ts` installed in your project. Multiple versions are known to cause `tsc` to hang during compilation. You can check the versions currently installed using `npm ls fp-ts` (make sure there's a single version and all the others are marked as `deduped`).
+
+## TypeScript compatibility
+
+**Strictness** – This library is conceived, tested and is supposed to be consumed by TypeScript with the `strict` flag turned on.
+
+| `fp-ts` version | required `typescript` version |
+| --------------- | ----------------------------- |
+| 1.15.x+         | 3.1+                          |
+| <= 1.14.4       | 2.8+ (\*)                     |
+
+(\*) If you are running `< typescript@3.0.1` you have to polyfill the `unknown` type. You can use [unknown-ts](https://github.com/gcanti/unknown-ts) as a polyfill.

@@ -1,9 +1,15 @@
+/**
+ * @file `Task<A>` represents an asynchronous computation that yields a value of type `A` and **never fails**.
+ * If you want to represent an asynchronous computation that may fail, please see `TaskEither`.
+ */
 import { Either, left, right } from './Either'
+import { constant, constIdentity, identity, Lazy, toString } from './function'
 import { IO } from './IO'
 import { Monad1 } from './Monad'
+import { MonadIO1 } from './MonadIO'
+import { MonadTask1 } from './MonadTask'
 import { Monoid } from './Monoid'
 import { Semigroup } from './Semigroup'
-import { Lazy, constIdentity, toString, constant } from './function'
 
 declare module './HKT' {
   interface URI2HKT<A> {
@@ -16,8 +22,6 @@ export const URI = 'Task'
 export type URI = typeof URI
 
 /**
- * @data
- * @constructor Task
  * @since 1.0.0
  */
 export class Task<A> {
@@ -30,6 +34,9 @@ export class Task<A> {
   ap<B>(fab: Task<(a: A) => B>): Task<B> {
     return new Task(() => Promise.all([fab.run(), this.run()]).then(([f, a]) => f(a)))
   }
+  /**
+   * Flipped version of `ap`
+   */
   ap_<B, C>(this: Task<(b: B) => C>, fb: Task<B>): Task<C> {
     return fb.ap(this)
   }
@@ -75,7 +82,6 @@ const chain = <A, B>(fa: Task<A>, f: (a: A) => Task<B>): Task<B> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getRaceMonoid = <A = never>(): Monoid<Task<A>> => {
@@ -108,7 +114,6 @@ export const getRaceMonoid = <A = never>(): Monoid<Task<A>> => {
 const never = new Task(() => new Promise<never>(_ => undefined))
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<Task<A>> => {
@@ -118,7 +123,6 @@ export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<Task<A>> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getMonoid = <A>(M: Monoid<A>): Monoid<Task<A>> => {
@@ -129,16 +133,15 @@ export const getMonoid = <A>(M: Monoid<A>): Monoid<Task<A>> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
-export const tryCatch = <L, A>(f: Lazy<Promise<A>>, onrejected: (reason: {}) => L): Task<Either<L, A>> => {
-  return new Task(() => f().then(a => right<L, A>(a), reason => left<L, A>(onrejected(reason))))
+export const tryCatch = <L, A>(f: Lazy<Promise<A>>, onrejected: (reason: unknown) => L): Task<Either<L, A>> => {
+  return new Task(() => f().then<Either<L, A>, Either<L, A>>(right, reason => left(onrejected(reason))))
 }
 
 /**
  * Lifts an IO action into a Task
- * @function
+ *
  * @since 1.0.0
  */
 export const fromIO = <A>(io: IO<A>): Task<A> => {
@@ -146,7 +149,6 @@ export const fromIO = <A>(io: IO<A>): Task<A> => {
 }
 
 /**
- * @function
  * @since 1.7.0
  */
 export const delay = <A>(millis: number, a: A): Task<A> => {
@@ -160,14 +162,27 @@ export const delay = <A>(millis: number, a: A): Task<A> => {
   )
 }
 
+const fromTask = identity
+
 /**
- * @instance
  * @since 1.0.0
  */
-export const task: Monad1<URI> = {
+export const task: Monad1<URI> & MonadIO1<URI> & MonadTask1<URI> = {
   URI,
   map,
   of,
   ap,
-  chain
+  chain,
+  fromIO,
+  fromTask
+}
+
+/**
+ * Like `Task` but `ap` is sequential
+ *
+ * @since 1.10.0
+ */
+export const taskSeq: typeof task = {
+  ...task,
+  ap: (fab, fa) => fab.chain(f => fa.map(f))
 }

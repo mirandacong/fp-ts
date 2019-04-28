@@ -1,6 +1,6 @@
-// adapted from http://okmij.org/ftp/Computation/free-monad.html
-// and https://github.com/purescript/purescript-free
-
+/**
+ * @file Adapted from http://okmij.org/ftp/Computation/free-monad.html and https://github.com/purescript/purescript-free
+ */
 import { HKT, Type, Type2, Type3, URIS, URIS2, URIS3 } from './HKT'
 import { Monad, Monad1, Monad2, Monad2C, Monad3, Monad3C } from './Monad'
 import { toString } from './function'
@@ -35,6 +35,9 @@ export class Pure<F, A> {
   ap<B>(fab: Free<F, (a: A) => B>): Free<F, B> {
     return fab.chain(f => this.map(f)) // <- derived
   }
+  /**
+   * Flipped version of `ap`
+   */
   ap_<B, C>(this: Free<F, (b: B) => C>, fb: Free<F, B>): Free<F, C> {
     return fb.ap(this)
   }
@@ -88,7 +91,6 @@ export class Impure<F, A, X> {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const of = <F, A>(a: A): Free<F, A> => {
@@ -97,7 +99,7 @@ export const of = <F, A>(a: A): Free<F, A> => {
 
 /**
  * Lift an impure value described by the generating type constructor `F` into the free monad
- * @function
+ *
  * @since 1.0.0
  */
 export const liftF = <F, A>(fa: HKT<F, A>): Free<F, A> => {
@@ -118,6 +120,8 @@ const substFree = <F, G>(f: <A>(fa: HKT<F, A>) => Free<G, A>): (<A>(fa: Free<F, 
 
 /**
  * Use a natural transformation to change the generating type constructor of a free monad
+ *
+ * @since 1.0.0
  */
 export function hoistFree<F extends URIS3 = never, G extends URIS3 = never>(
   nt: <U, L, A>(fa: Type3<F, U, L, A>) => Type3<G, U, L, A>
@@ -129,11 +133,6 @@ export function hoistFree<F extends URIS = never, G extends URIS = never>(
   nt: <A>(fa: Type<F, A>) => Type<G, A>
 ): (<A>(fa: Free<F, A>) => Free<G, A>)
 export function hoistFree<F, G>(nt: <A>(fa: HKT<F, A>) => HKT<G, A>): (<A>(fa: Free<F, A>) => Free<G, A>)
-/**
- * Use a natural transformation to change the generating type constructor of a free monad
- * @function
- * @since 1.0.0
- */
 export function hoistFree<F, G>(nt: <A>(fa: HKT<F, A>) => HKT<G, A>): (<A>(fa: Free<F, A>) => Free<G, A>) {
   return substFree(fa => liftF(nt(fa)))
 }
@@ -160,6 +159,9 @@ export interface FoldFree2C<M extends URIS2, L> {
   <F extends URIS, A>(nt: <X>(fa: Type<F, X>) => Type2<M, L, X>, fa: Free<F, A>): Type2<M, L, A>
 }
 
+/**
+ * @since 1.0.0
+ */
 export function foldFree<M extends URIS3>(M: Monad3<M>): FoldFree3<M>
 export function foldFree<M extends URIS3, U, L>(M: Monad3C<M, U, L>): FoldFree3C<M, U, L>
 export function foldFree<M extends URIS2>(M: Monad2<M>): FoldFree2<M>
@@ -168,10 +170,6 @@ export function foldFree<M extends URIS>(
   M: Monad1<M>
 ): <F extends URIS, A>(nt: <X>(fa: Type<F, X>) => Type<M, X>, fa: Free<F, A>) => Type<M, A>
 export function foldFree<M>(M: Monad<M>): <F, A>(nt: <X>(fa: HKT<F, X>) => HKT<M, X>, fa: Free<F, A>) => HKT<M, A>
-/**
- * @function
- * @since 1.0.0
- */
 export function foldFree<M>(M: Monad<M>): <F, A>(nt: any, fa: Free<F, A>) => HKT<M, A> {
   return (nt, fa) => {
     if (fa.isPure()) {

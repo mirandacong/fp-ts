@@ -1,22 +1,29 @@
+/**
+ * @file The `Validation` functor, used for applicative validation
+ *
+ * The `Applicative` instance collects multiple failures in an arbitrary `Semigroup`.
+ *
+ * Adapted from https://github.com/purescript/purescript-validation
+ */
 import { Alt2C } from './Alt'
 import { Applicative, Applicative2C } from './Applicative'
+import { Bifunctor2 } from './Bifunctor'
+import { Compactable2C, Separated } from './Compactable'
 import { Either } from './Either'
-import { Foldable2 } from './Foldable'
+import { Filterable2C } from './Filterable'
+import { Foldable2v2 } from './Foldable2v'
+import { phantom, Predicate, toString, Refinement, Lazy } from './function'
 import { Functor2 } from './Functor'
 import { HKT } from './HKT'
 import { Monad2C } from './Monad'
 import { Monoid } from './Monoid'
-import { Semigroup } from './Semigroup'
-import { Setoid } from './Setoid'
-import { Traversable2 } from './Traversable'
-import { Predicate, phantom, toString } from './function'
-import { Bifunctor2 } from './Bifunctor'
-import { Compactable2C, Separated } from './Compactable'
 import { Option } from './Option'
-import { Filterable2C } from './Filterable'
+import { Semigroup } from './Semigroup'
+import { Setoid, fromEquals } from './Setoid'
+import { Traversable2v2 } from './Traversable2v'
 import { Witherable2C } from './Witherable'
-
-// Adapted from https://github.com/purescript/purescript-validation
+import { MonadThrow2C } from './MonadThrow'
+import { Show } from './Show'
 
 declare module './HKT' {
   interface URI2HKT2<L, A> {
@@ -29,12 +36,7 @@ export const URI = 'Validation'
 export type URI = typeof URI
 
 /**
- * The `Validation` functor, used for applicative validation
- *
- * The `Applicative` instance collects multiple failures in an arbitrary `Semigroup`.
- *
  * @example
- *
  * import { Validation, getApplicative, success, failure } from 'fp-ts/lib/Validation'
  * import { NonEmptyArray, getSemigroup } from 'fp-ts/lib/NonEmptyArray'
  *
@@ -65,15 +67,10 @@ export type URI = typeof URI
  *   return A.ap(validateName(input['name']).map(person), validateAge(input['age']))
  * }
  *
- * console.log(validatePerson({ name: '', age: '1.2' }))
- * // failure(new NonEmptyArray("Invalid name: empty string", ["Invalid age: not an integer 1.2"]))
+ * assert.deepStrictEqual(validatePerson({ name: '', age: '1.2' }), failure(new NonEmptyArray("Invalid name: empty string", ["Invalid age: not an integer 1.2"])))
  *
- * console.log(validatePerson({ name: 'Giulio', age: '44' }))
- * // success({ "name": "Giulio", "age": 44 })
+ * assert.deepStrictEqual(validatePerson({ name: 'Giulio', age: '44' }), success({ "name": "Giulio", "age": 44 }))
  *
- * @data
- * @constructor Failure
- * @constructor Success
  * @since 1.0.0
  */
 export type Validation<L, A> = Failure<L, A> | Success<L, A>
@@ -171,23 +168,36 @@ export class Success<L, A> {
 }
 
 /**
- * @function
+ * @since 1.17.0
+ */
+export const getShow = <L, A>(SL: Show<L>, SA: Show<A>): Show<Validation<L, A>> => {
+  return {
+    show: e => e.fold(l => `failure(${SL.show(l)})`, a => `success(${SA.show(a)})`)
+  }
+}
+
+/**
  * @since 1.0.0
  */
 export const getSetoid = <L, A>(SL: Setoid<L>, SA: Setoid<A>): Setoid<Validation<L, A>> => {
-  return {
-    equals: (x, y) =>
+  return fromEquals(
+    (x, y) =>
       x.isFailure() ? y.isFailure() && SL.equals(x.value, y.value) : y.isSuccess() && SA.equals(x.value, y.value)
-  }
+  )
 }
 
 const map = <L, A, B>(fa: Validation<L, A>, f: (a: A) => B): Validation<L, B> => {
   return fa.map(f)
 }
 
-const of = <L, A>(a: A): Validation<L, A> => {
+/**
+ * @since 1.0.0
+ */
+export const success = <L, A>(a: A): Validation<L, A> => {
   return new Success<L, A>(a)
 }
+
+const of = success
 
 /**
  * @example
@@ -212,11 +222,9 @@ const of = <L, A>(a: A): Validation<L, A> => {
  * const validatePerson = (name: string, age: number): Validation<string[], Person> =>
  *   A.ap(A.map(validateName(name), person), validateAge(age))
  *
- * console.log(validatePerson('Nicolas Bourbaki', 45)) // success({ "name": "Nicolas Bourbaki", "age": 45 })
- * console.log(validatePerson('Nicolas Bourbaki', -1)) // failure(["invalid age"])
- * console.log(validatePerson('', 0)) // failure(["invalid name", "invalid age"])
- *
- * @function
+ * assert.deepStrictEqual(validatePerson('Nicolas Bourbaki', 45), success({ "name": "Nicolas Bourbaki", "age": 45 }))
+ * assert.deepStrictEqual(validatePerson('Nicolas Bourbaki', -1), failure(["invalid age"]))
+ * assert.deepStrictEqual(validatePerson('', 0), failure(["invalid name", "invalid age"]))
  *
  * @since 1.0.0
  */
@@ -241,7 +249,8 @@ export const getApplicative = <L>(S: Semigroup<L>): Applicative2C<URI, L> => {
 }
 
 /**
- * @function
+ * **Note**: This function is here just to avoid switching to / from `Either`
+ *
  * @since 1.0.0
  */
 export const getMonad = <L>(S: Semigroup<L>): Monad2C<URI, L> => {
@@ -259,11 +268,23 @@ const reduce = <L, A, B>(fa: Validation<L, A>, b: B, f: (b: B, a: A) => B): B =>
   return fa.reduce(b, f)
 }
 
+const foldMap = <M>(M: Monoid<M>) => <L, A>(fa: Validation<L, A>, f: (a: A) => M): M => {
+  return fa.isFailure() ? M.empty : f(fa.value)
+}
+
+const foldr = <L, A, B>(fa: Validation<L, A>, b: B, f: (a: A, b: B) => B): B => {
+  return fa.isFailure() ? b : f(fa.value, b)
+}
+
 const traverse = <F>(F: Applicative<F>) => <L, A, B>(
   ta: Validation<L, A>,
   f: (a: A) => HKT<F, B>
 ): HKT<F, Validation<L, B>> => {
-  return ta.isFailure() ? F.of(failure(ta.value)) : F.map(f(ta.value), of as (a: B) => Validation<L, B>)
+  return ta.isFailure() ? F.of(failure(ta.value)) : F.map<B, Validation<L, B>>(f(ta.value), of)
+}
+
+const sequence = <F>(F: Applicative<F>) => <L, A>(ta: Validation<L, HKT<F, A>>): HKT<F, Validation<L, A>> => {
+  return ta.isFailure() ? F.of(failure(ta.value)) : F.map<A, Validation<L, A>>(ta.value, of)
 }
 
 const bimap = <L, V, A, B>(fla: Validation<L, A>, f: (u: L) => V, g: (a: A) => B): Validation<V, B> => {
@@ -271,7 +292,6 @@ const bimap = <L, V, A, B>(fla: Validation<L, A>, f: (u: L) => V, g: (a: A) => B
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const failure = <L, A>(l: L): Validation<L, A> => {
@@ -279,22 +299,18 @@ export const failure = <L, A>(l: L): Validation<L, A> => {
 }
 
 /**
- * @function
- * @since 1.0.0
- * @alias of
- */
-export const success = of
-
-/**
- * @function
  * @since 1.0.0
  */
-export const fromPredicate = <L, A>(predicate: Predicate<A>, f: (a: A) => L) => (a: A): Validation<L, A> => {
-  return predicate(a) ? success(a) : failure(f(a))
+export function fromPredicate<L, A, B extends A>(
+  predicate: Refinement<A, B>,
+  f: (a: A) => L
+): (a: A) => Validation<L, B>
+export function fromPredicate<L, A>(predicate: Predicate<A>, f: (a: A) => L): (a: A) => Validation<L, A>
+export function fromPredicate<L, A>(predicate: Predicate<A>, f: (a: A) => L): (a: A) => Validation<L, A> {
+  return a => (predicate(a) ? success(a) : failure(f(a)))
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const fromEither = <L, A>(e: Either<L, A>): Validation<L, A> => {
@@ -302,7 +318,37 @@ export const fromEither = <L, A>(e: Either<L, A>): Validation<L, A> => {
 }
 
 /**
- * @function
+ * Constructs a new `Validation` from a function that might throw
+ *
+ * @example
+ * import { Validation, failure, success, tryCatch } from 'fp-ts/lib/Validation'
+ *
+ * const unsafeHead = <A>(as: Array<A>): A => {
+ *   if (as.length > 0) {
+ *     return as[0]
+ *   } else {
+ *     throw new Error('empty array')
+ *   }
+ * }
+ *
+ * const head = <A>(as: Array<A>): Validation<Error, A> => {
+ *   return tryCatch(() => unsafeHead(as), e => (e instanceof Error ? e : new Error('unknown error')))
+ * }
+ *
+ * assert.deepStrictEqual(head([]), failure(new Error('empty array')))
+ * assert.deepStrictEqual(head([1, 2, 3]), success(1))
+ *
+ * @since 1.16.0
+ */
+export const tryCatch = <L, A>(f: Lazy<A>, onError: (e: unknown) => L): Validation<L, A> => {
+  try {
+    return success(f())
+  } catch (e) {
+    return failure(onError(e))
+  }
+}
+
+/**
  * @since 1.0.0
  */
 export const getSemigroup = <L, A>(SL: Semigroup<L>, SA: Semigroup<A>): Semigroup<Validation<L, A>> => {
@@ -321,7 +367,6 @@ export const getSemigroup = <L, A>(SL: Semigroup<L>, SA: Semigroup<A>): Semigrou
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getMonoid = <L, A>(SL: Semigroup<L>, SA: Monoid<A>): Monoid<Validation<L, A>> => {
@@ -332,7 +377,6 @@ export const getMonoid = <L, A>(SL: Semigroup<L>, SA: Monoid<A>): Monoid<Validat
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getAlt = <L>(S: Semigroup<L>): Alt2C<URI, L> => {
@@ -349,7 +393,7 @@ export const getAlt = <L>(S: Semigroup<L>): Alt2C<URI, L> => {
 
 /**
  * Returns `true` if the validation is an instance of `Failure`, `false` otherwise
- * @function
+ *
  * @since 1.0.0
  */
 export const isFailure = <L, A>(fa: Validation<L, A>): fa is Failure<L, A> => {
@@ -358,7 +402,7 @@ export const isFailure = <L, A>(fa: Validation<L, A>): fa is Failure<L, A> => {
 
 /**
  * Returns `true` if the validation is an instance of `Success`, `false` otherwise
- * @function
+ *
  * @since 1.0.0
  */
 export const isSuccess = <L, A>(fa: Validation<L, A>): fa is Success<L, A> => {
@@ -366,8 +410,8 @@ export const isSuccess = <L, A>(fa: Validation<L, A>): fa is Success<L, A> => {
 }
 
 /**
- * Builds {@link Compactable} instance for {@link Validation} given {@link Monoid} for the failure side
- * @function
+ * Builds `Compactable` instance for `Validation` given `Monoid` for the failure side
+ *
  * @since 1.7.0
  */
 export function getCompactable<L>(ML: Monoid<L>): Compactable2C<URI, L> {
@@ -408,8 +452,8 @@ export function getCompactable<L>(ML: Monoid<L>): Compactable2C<URI, L> {
 }
 
 /**
- * Builds {@link Filterable} instance for {@link Validation} given {@link Monoid} for the left side
- * @function
+ * Builds `Filterable` instance for `Validation` given `Monoid` for the left side
+ *
  * @since 1.7.0
  */
 export function getFilterable<L>(ML: Monoid<L>): Filterable2C<URI, L> {
@@ -485,8 +529,8 @@ export function getFilterable<L>(ML: Monoid<L>): Filterable2C<URI, L> {
 }
 
 /**
- * Builds {@link Witherable} instance for {@link Validation} given {@link Monoid} for the left side
- * @function
+ * Builds `Witherable` instance for `Validation` given `Monoid` for the left side
+ *
  * @since 1.7.0
  */
 export function getWitherable<L>(ML: Monoid<L>): Witherable2C<URI, L> {
@@ -518,14 +562,30 @@ export function getWitherable<L>(ML: Monoid<L>): Witherable2C<URI, L> {
   }
 }
 
+const throwError = failure
+
 /**
- * @instance
+ * @since 1.16.0
+ */
+export const getMonadThrow = <L>(S: Semigroup<L>): MonadThrow2C<URI, L> => {
+  return {
+    ...getMonad(S),
+    throwError,
+    fromEither,
+    fromOption: (o, e) => (o.isNone() ? throwError(e) : of(o.value))
+  }
+}
+
+/**
  * @since 1.0.0
  */
-export const validation: Functor2<URI> & Bifunctor2<URI> & Foldable2<URI> & Traversable2<URI> = {
+export const validation: Functor2<URI> & Bifunctor2<URI> & Foldable2v2<URI> & Traversable2v2<URI> = {
   URI,
   map,
   bimap,
   reduce,
-  traverse
+  foldMap,
+  foldr,
+  traverse,
+  sequence
 }

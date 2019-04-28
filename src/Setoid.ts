@@ -1,7 +1,5 @@
-import { on } from './function'
-
 /**
- * The `Setoid` type class represents types which support decidable equality.
+ * @file The `Setoid` type class represents types which support decidable equality.
  *
  * Instances must satisfy the following laws:
  *
@@ -9,7 +7,10 @@ import { on } from './function'
  * 2. Symmetry: `S.equals(a, b) === S.equals(b, a)`
  * 3. Transitivity: if `S.equals(a, b) === true` and `S.equals(b, c) === true`, then `S.equals(a, c) === true`
  *
- * @typeclass
+ * See [Getting started with fp-ts: Setoid](https://dev.to/gcanti/getting-started-with-fp-ts-setoid-39f3)
+ */
+
+/**
  * @since 1.0.0
  */
 export interface Setoid<A> {
@@ -17,7 +18,15 @@ export interface Setoid<A> {
 }
 
 /**
- * @function
+ * @since 1.14.0
+ */
+export const fromEquals = <A>(equals: (x: A, y: A) => boolean): Setoid<A> => {
+  return {
+    equals: (x, y) => x === y || equals(x, y)
+  }
+}
+
+/**
  * @since 1.0.0
  */
 export const strictEqual = <A>(a: A, b: A): boolean => {
@@ -27,75 +36,93 @@ export const strictEqual = <A>(a: A, b: A): boolean => {
 const setoidStrict = { equals: strictEqual }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const setoidString: Setoid<string> = setoidStrict
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const setoidNumber: Setoid<number> = setoidStrict
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const setoidBoolean: Setoid<boolean> = setoidStrict
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getArraySetoid = <A>(S: Setoid<A>): Setoid<Array<A>> => {
-  return {
-    equals: (xs, ys) => xs.length === ys.length && xs.every((x, i) => S.equals(x, ys[i]))
-  }
+  return fromEquals((xs, ys) => xs.length === ys.length && xs.every((x, i) => S.equals(x, ys[i])))
 }
 
 /**
- * @function
+ * @since 1.14.2
+ */
+export const getStructSetoid = <O extends { [key: string]: any }>(
+  setoids: { [K in keyof O]: Setoid<O[K]> }
+): Setoid<O> => {
+  return fromEquals((x, y) => {
+    for (const k in setoids) {
+      if (!setoids[k].equals(x[k], y[k])) {
+        return false
+      }
+    }
+    return true
+  })
+}
+
+/**
+ * Use `getStructSetoid` instead
  * @since 1.0.0
+ * @deprecated
  */
 export const getRecordSetoid = <O extends { [key: string]: any }>(
   setoids: { [K in keyof O]: Setoid<O[K]> }
 ): Setoid<O> => {
-  return {
-    equals: (x, y) => {
-      for (const k in setoids) {
-        if (!setoids[k].equals(x[k], y[k])) {
-          return false
-        }
-      }
-      return true
-    }
-  }
+  return getStructSetoid(setoids)
 }
 
 /**
- * @function
+ * Given a tuple of `Setoid`s returns a `Setoid` for the tuple
+ *
+ * @example
+ * import { getTupleSetoid, setoidString, setoidNumber, setoidBoolean } from 'fp-ts/lib/Setoid'
+ *
+ * const S = getTupleSetoid(setoidString, setoidNumber, setoidBoolean)
+ * assert.strictEqual(S.equals(['a', 1, true], ['a', 1, true]), true)
+ * assert.strictEqual(S.equals(['a', 1, true], ['b', 1, true]), false)
+ * assert.strictEqual(S.equals(['a', 1, true], ['a', 2, true]), false)
+ * assert.strictEqual(S.equals(['a', 1, true], ['a', 1, false]), false)
+ *
+ * @since 1.14.2
+ */
+export const getTupleSetoid = <T extends Array<Setoid<any>>>(
+  ...setoids: T
+): Setoid<{ [K in keyof T]: T[K] extends Setoid<infer A> ? A : never }> => {
+  return fromEquals((x, y) => setoids.every((S, i) => S.equals(x[i], y[i])))
+}
+
+/**
+ * Use `getTupleSetoid` instead
  * @since 1.0.0
+ * @deprecated
  */
 export const getProductSetoid = <A, B>(SA: Setoid<A>, SB: Setoid<B>): Setoid<[A, B]> => {
-  return {
-    equals: ([xa, xb], [ya, yb]) => SA.equals(xa, ya) && SB.equals(xb, yb)
-  }
+  return getTupleSetoid(SA, SB)
 }
 
 /**
  * Returns the `Setoid` corresponding to the partitions of `B` induced by `f`
- * @function
+ *
  * @since 1.2.0
  */
 export const contramap = <A, B>(f: (b: B) => A, fa: Setoid<A>): Setoid<B> => {
-  return {
-    equals: on(fa.equals)(f)
-  }
+  return fromEquals((x, y) => fa.equals(f(x), f(y)))
 }
 
 /**
- * @instance
  * @since 1.4.0
  */
 export const setoidDate: Setoid<Date> = contramap(date => date.valueOf(), setoidNumber)

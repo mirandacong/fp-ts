@@ -1,13 +1,48 @@
 import * as assert from 'assert'
-import { contramap, getProductSetoid, getRecordSetoid, setoidDate, setoidNumber, setoidString } from '../src/Setoid'
+import {
+  contramap,
+  getProductSetoid,
+  getRecordSetoid,
+  setoidDate,
+  setoidNumber,
+  setoidString,
+  fromEquals,
+  getTupleSetoid,
+  setoidBoolean
+} from '../src/Setoid'
 
 describe('Setoid', () => {
+  it('getTupleSetoid', () => {
+    const S = getTupleSetoid(setoidString, setoidNumber, setoidBoolean)
+    assert.strictEqual(S.equals(['a', 1, true], ['a', 1, true]), true)
+    assert.strictEqual(S.equals(['a', 1, true], ['b', 1, true]), false)
+    assert.strictEqual(S.equals(['a', 1, true], ['a', 2, true]), false)
+    assert.strictEqual(S.equals(['a', 1, true], ['a', 1, false]), false)
+  })
+
   interface Person {
     name: string
     age: number
   }
+  it('fromEquals', () => {
+    interface A {
+      x: number
+    }
+    let nbCall = 0
+    const S1 = fromEquals<A>((a, b) => {
+      nbCall += 1
+      return a.x === b.x
+    })
+    const a1 = { x: 1 }
+    const a2 = { x: 1 }
+    S1.equals(a1, a1)
+    assert.strictEqual(nbCall, 0)
+    S1.equals(a1, a2)
+    assert.strictEqual(nbCall, 1)
+  })
 
   it('getRecordSetoid', () => {
+    // tslint:disable-next-line: deprecation
     const S = getRecordSetoid<Person>({
       name: setoidString,
       age: setoidNumber
@@ -18,6 +53,7 @@ describe('Setoid', () => {
   })
 
   it('getProductSetoid', () => {
+    // tslint:disable-next-line: deprecation
     const S = getProductSetoid(setoidString, setoidNumber)
     assert.strictEqual(S.equals(['a', 1], ['a', 1]), true)
     assert.strictEqual(S.equals(['a', 1], ['b', 1]), false)

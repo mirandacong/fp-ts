@@ -3,6 +3,7 @@ import { left as eitherLeft, right as eitherRight } from '../src/Either'
 import { IO } from '../src/IO'
 import { Task, task, delay } from '../src/Task'
 import {
+  bracket,
   TaskEither,
   fromIO,
   fromLeft,
@@ -14,21 +15,113 @@ import {
   fromIOEither,
   fromPredicate,
   getApplyMonoid,
-  getSemigroup
+  getSemigroup,
+  taskEitherSeq
 } from '../src/TaskEither'
 import { IOEither } from '../src/IOEither'
 import { monoidString } from '../src/Monoid'
 import { semigroupSum } from '../src/Semigroup'
+import { sequence } from '../src/Traversable'
+import { array } from '../src/Array'
+import { none, some } from '../src/Option'
 
 describe('TaskEither', () => {
+  it('attempt', () => {
+    return Promise.all([
+      taskEither
+        .of(1)
+        .attempt()
+        .run(),
+      fromLeft('foo')
+        .attempt()
+        .run()
+    ]).then(([x, y]) => {
+      assert.deepStrictEqual(x, eitherRight(eitherRight(1)))
+      assert.deepStrictEqual(y, eitherRight(eitherLeft('foo')))
+    })
+  })
+
+  describe('bracket', () => {
+    let log: Array<string> = []
+
+    interface Resource {
+      res: string
+    }
+    const acquireFailure = fromLeft<string, Resource>('acquire failure')
+    const acquireSuccess = taskEither.of<string, Resource>({ res: 'acquire success' })
+    const useSuccess = () => taskEither.of<string, string>('use success')
+    const useFailure = () => fromLeft<string, string>('use failure')
+    const releaseSuccess = () =>
+      fromIO<string, void>(
+        new IO(() => {
+          log.push('release success')
+        })
+      )
+    const releaseFailure = () => fromLeft<string, void>('release failure')
+
+    beforeEach(() => {
+      log = []
+    })
+
+    it('should return the acquire error if acquire fails', () => {
+      return bracket(acquireFailure, useSuccess, releaseSuccess)
+        .run()
+        .then(e => {
+          assert.deepStrictEqual(e, eitherLeft('acquire failure'))
+        })
+    })
+    it('body and release must not be called if acquire fails', () => {
+      return bracket(acquireFailure, useSuccess, releaseSuccess)
+        .run()
+        .then(() => {
+          assert.deepStrictEqual(log, [])
+        })
+    })
+    it('should return the use error if use fails and release does not', () => {
+      return bracket(acquireSuccess, useFailure, releaseSuccess)
+        .run()
+        .then(e => {
+          assert.deepStrictEqual(e, eitherLeft('use failure'))
+        })
+    })
+    it('should return the release error if both use and release fail', () => {
+      return bracket(acquireSuccess, useFailure, releaseFailure)
+        .run()
+        .then(e => {
+          assert.deepStrictEqual(e, eitherLeft('release failure'))
+        })
+    })
+    it('release must be called if the body returns', () => {
+      return bracket(acquireSuccess, useSuccess, releaseSuccess)
+        .run()
+        .then(() => {
+          assert.deepStrictEqual(log, ['release success'])
+        })
+    })
+    it('release must be called if the body throws', () => {
+      return bracket(acquireSuccess, useFailure, releaseSuccess)
+        .run()
+        .then(() => {
+          assert.deepStrictEqual(log, ['release success'])
+        })
+    })
+    it('should return the release error if release fails', () => {
+      return bracket(acquireSuccess, useSuccess, releaseFailure)
+        .run()
+        .then(e => {
+          assert.deepStrictEqual(e, eitherLeft('release failure'))
+        })
+    })
+  })
+
   it('ap', () => {
     const double = (n: number): number => n * 2
     const fab = taskEither.of(double)
     const fa = taskEither.of(1)
     return Promise.all([fa.ap(fab).run(), fab.ap_(fa).run(), taskEither.ap(fab, fa).run()]).then(([e1, e2, e3]) => {
-      assert.deepEqual(e1, eitherRight(2))
-      assert.deepEqual(e1, e2)
-      assert.deepEqual(e1, e3)
+      assert.deepStrictEqual(e1, eitherRight(2))
+      assert.deepStrictEqual(e1, e2)
+      assert.deepStrictEqual(e1, e3)
     })
   })
 
@@ -38,7 +131,7 @@ describe('TaskEither', () => {
       .map(taskEither.of(1), double)
       .run()
       .then(e => {
-        assert.deepEqual(e, eitherRight(2))
+        assert.deepStrictEqual(e, eitherRight(2))
       })
   })
 
@@ -49,7 +142,7 @@ describe('TaskEither', () => {
       .mapLeft(double)
       .run()
       .then(e => {
-        assert.deepEqual(e, eitherLeft(2))
+        assert.deepStrictEqual(e, eitherLeft(2))
       })
   })
 
@@ -63,8 +156,8 @@ describe('TaskEither', () => {
       a => (a.length > 2 ? taskEither.of<string, number>(a.length) : fromLeft<string, number>('foo'))
     )
     return Promise.all([te1.run(), te2.run()]).then(([e1, e2]) => {
-      assert.deepEqual(e1, eitherRight(3))
-      assert.deepEqual(e2, eitherLeft('foo'))
+      assert.deepStrictEqual(e1, eitherRight(3))
+      assert.deepStrictEqual(e2, eitherLeft('foo'))
     })
   })
 
@@ -79,6 +172,16 @@ describe('TaskEither', () => {
     })
   })
 
+  it('getOrElse', () => {
+    const v: number = 42
+    const te1 = taskEither.of<string, number>(1).getOrElse(v)
+    const te2 = fromLeft<string, number>('foo').getOrElse(v)
+    return Promise.all([te1.run(), te2.run()]).then(([b1, b2]) => {
+      assert.strictEqual(b1, 1)
+      assert.strictEqual(b2, 42)
+    })
+  })
+
   it('bimap', () => {
     const f = (s: string): number => s.length
     const g = (n: number): boolean => n > 2
@@ -89,9 +192,9 @@ describe('TaskEither', () => {
       teLeft.bimap(f, g).run(),
       taskEither.bimap(teRight, f, g).run()
     ]).then(([e1, e2, e3]) => {
-      assert.deepEqual(e1, eitherRight(false))
-      assert.deepEqual(e2, eitherLeft(3))
-      assert.deepEqual(e1, e3)
+      assert.deepStrictEqual(e1, eitherRight(false))
+      assert.deepStrictEqual(e2, eitherLeft(3))
+      assert.deepStrictEqual(e1, e3)
     })
   })
 
@@ -101,8 +204,8 @@ describe('TaskEither', () => {
     const tl = l.orElse(l => taskEither.of<number, number>(l.length))
     const tr = r.orElse(() => taskEither.of<number, number>(2))
     return Promise.all([tl.run(), tr.run()]).then(([el, er]) => {
-      assert.deepEqual(el, eitherRight(3))
-      assert.deepEqual(er, eitherRight(1))
+      assert.deepStrictEqual(el, eitherRight(3))
+      assert.deepStrictEqual(er, eitherRight(1))
     })
   })
 
@@ -110,20 +213,33 @@ describe('TaskEither', () => {
     return left(task.of(1))
       .run()
       .then(e => {
-        assert.deepEqual(e, eitherLeft(1))
+        assert.deepStrictEqual(e, eitherLeft(1))
       })
   })
 
   it('applySecond', () => {
     const log: Array<string> = []
-    const append = (message: string): TaskEither<string, number> =>
-      right(new Task(() => Promise.resolve(log.push(message))))
-    return append('a')
-      .applySecond(append('b'))
+    const append = (message: string, millis: number): TaskEither<string, number> =>
+      right(delay(millis, undefined).map(() => log.push(message)))
+    return append('a', 10)
+      .applySecond(append('b', 0))
       .run()
       .then(e => {
-        assert.deepEqual(e, eitherRight(2))
-        assert.deepEqual(log, ['a', 'b'])
+        assert.deepStrictEqual(e, eitherRight(1))
+        assert.deepStrictEqual(log, ['b', 'a'])
+      })
+  })
+
+  it('ChainSecond', () => {
+    const log: Array<string> = []
+    const append = (message: string, millis: number): TaskEither<string, number> =>
+      right(delay(millis, undefined).map(() => log.push(message)))
+    return append('a', 10)
+      .chainSecond(append('b', 0))
+      .run()
+      .then(e => {
+        assert.deepStrictEqual(e, eitherRight(2))
+        assert.deepStrictEqual(log, ['a', 'b'])
       })
   })
 
@@ -131,8 +247,8 @@ describe('TaskEither', () => {
     const ok = tryCatch(() => Promise.resolve(1), () => 'error')
     const ko = tryCatch(() => Promise.reject(undefined), () => 'error')
     return Promise.all([ok.run(), ko.run()]).then(([eok, eko]) => {
-      assert.deepEqual(eok, eitherRight(1))
-      assert.deepEqual(eko, eitherLeft('error'))
+      assert.deepStrictEqual(eok, eitherRight(1))
+      assert.deepStrictEqual(eko, eitherLeft('error'))
     })
   })
 
@@ -140,27 +256,39 @@ describe('TaskEither', () => {
     const io = new IO(() => 1)
     const fa = fromIO(io)
     return fa.run().then(e => {
-      assert.deepEqual(e, eitherRight(1))
+      assert.deepStrictEqual(e, eitherRight(1))
     })
   })
 
   it('taskify', () => {
-    const api1 = (path: string, callback: (err: Error | null | undefined, result?: string) => void): void => {
+    const api1 = (_path: string, callback: (err: Error | null | undefined, result?: string) => void): void => {
       callback(null, 'ok')
     }
-    const api2 = (path: string, callback: (err: Error | null | undefined, result?: string) => void): void => {
+    const api2 = (_path: string, callback: (err: Error | null | undefined, result?: string) => void): void => {
       callback(undefined, 'ok')
     }
-    const api3 = (path: string, callback: (err: Error | null | undefined, result?: string) => void): void => {
+    const api3 = (_path: string, callback: (err: Error | null | undefined, result?: string) => void): void => {
       callback(new Error('ko'))
     }
     return Promise.all([taskify(api1)('foo').run(), taskify(api2)('foo').run(), taskify(api3)('foo').run()]).then(
       ([e1, e2, e3]) => {
-        assert.deepEqual(e1, eitherRight('ok'))
-        assert.deepEqual(e2, eitherRight('ok'))
-        assert.deepEqual(e3, eitherLeft(new Error('ko')))
+        assert.deepStrictEqual(e1, eitherRight('ok'))
+        assert.deepStrictEqual(e2, eitherRight('ok'))
+        assert.deepStrictEqual(e3, eitherLeft(new Error('ko')))
       }
     )
+  })
+
+  it('composed taskify', () => {
+    const api = (callback: (err: Error | null | undefined, result?: string) => void): void => {
+      callback(null, 'ok')
+    }
+    const taskApi = taskify(api)()
+
+    return Promise.all([taskApi.run(), taskApi.run()]).then(([e1, e2]) => {
+      assert.deepStrictEqual(e1, eitherRight('ok'))
+      assert.deepStrictEqual(e2, eitherRight('ok'))
+    })
   })
 
   it('alt', () => {
@@ -174,33 +302,46 @@ describe('TaskEither', () => {
     const x4 = r1.alt(r2)
     const x5 = taskEither.alt(r1, r2)
     return Promise.all([x1.run(), x2.run(), x3.run(), x4.run(), x5.run()]).then(([e1, e2, e3, e4, e5]) => {
-      assert.deepEqual(e1, eitherLeft('bar'))
-      assert.deepEqual(e2, eitherRight(1))
-      assert.deepEqual(e3, eitherRight(1))
-      assert.deepEqual(e4, eitherRight(1))
-      assert.deepEqual(e4, e5)
+      assert.deepStrictEqual(e1, eitherLeft('bar'))
+      assert.deepStrictEqual(e2, eitherRight(1))
+      assert.deepStrictEqual(e3, eitherRight(1))
+      assert.deepStrictEqual(e4, eitherRight(1))
+      assert.deepStrictEqual(e4, e5)
     })
   })
 
   it('fromIOEither', () => {
-    const x1 = fromIOEither(new IOEither(new IO(() => eitherRight(1))))
-    const x2 = fromIOEither(new IOEither(new IO(() => eitherLeft('foo'))))
+    const x1 = fromIOEither(new IOEither<string, number>(new IO(() => eitherRight(1))))
+    const x2 = fromIOEither(new IOEither<string, number>(new IO(() => eitherLeft('foo'))))
     return Promise.all([x1.run(), x2.run()]).then(([e1, e2]) => {
-      assert.deepEqual(e1, eitherRight(1))
-      assert.deepEqual(e2, eitherLeft('foo'))
+      assert.deepStrictEqual(e1, eitherRight(1))
+      assert.deepStrictEqual(e2, eitherLeft('foo'))
     })
   })
 
   it('applyFirst', () => {
     const log: Array<string> = []
-    const append = (message: string): TaskEither<string, number> =>
-      right(new Task(() => Promise.resolve(log.push(message))))
-    return append('a')
-      .applyFirst(append('b'))
+    const append = (message: string, millis: number): TaskEither<string, number> =>
+      right(delay(millis, undefined).map(() => log.push(message)))
+    return append('a', 10)
+      .applyFirst(append('b', 0))
       .run()
       .then(e => {
-        assert.deepEqual(e, eitherRight(1))
-        assert.deepEqual(log, ['a', 'b'])
+        assert.deepStrictEqual(e, eitherRight(2))
+        assert.deepStrictEqual(log, ['b', 'a'])
+      })
+  })
+
+  it('chainFirst', () => {
+    const log: Array<string> = []
+    const append = (message: string, millis: number): TaskEither<string, number> =>
+      right(delay(millis, undefined).map(() => log.push(message)))
+    return append('a', 10)
+      .chainFirst(append('b', 0))
+      .run()
+      .then(e => {
+        assert.deepStrictEqual(e, eitherRight(1))
+        assert.deepStrictEqual(log, ['a', 'b'])
       })
   })
 
@@ -208,11 +349,14 @@ describe('TaskEither', () => {
     const predicate = (n: number) => n >= 2
     const handleError = (n: number) => `Invalid number ${n}`
     const gt2 = fromPredicate(predicate, handleError)
-    const x1 = gt2(3)
-    const x2 = gt2(1)
-    return Promise.all([x1.run(), x2.run()]).then(([e1, e2]) => {
-      assert.deepEqual(e1, eitherRight(3))
-      assert.deepEqual(e2, eitherLeft('Invalid number 1'))
+    // refinements
+    const isNumber = (u: string | number): u is number => typeof u === 'number'
+    const is = fromPredicate(isNumber, () => 'not a number')
+    const actual = is(4)
+    return Promise.all([gt2(3).run(), gt2(1).run(), actual.run()]).then(([e1, e2, e3]) => {
+      assert.deepStrictEqual(e1, eitherRight(3))
+      assert.deepStrictEqual(e2, eitherLeft('Invalid number 1'))
+      assert.deepStrictEqual(e3, eitherRight(4))
     })
   })
 
@@ -221,16 +365,16 @@ describe('TaskEither', () => {
     return Promise.all([
       S.concat(left(delay(10, 'a')), left(delay(10, 'b')))
         .run()
-        .then(x => assert.deepEqual(x, eitherLeft('a'))),
+        .then(x => assert.deepStrictEqual(x, eitherLeft('a'))),
       S.concat(left(delay(10, 'a')), right(delay(10, 2)))
         .run()
-        .then(x => assert.deepEqual(x, eitherRight(2))),
+        .then(x => assert.deepStrictEqual(x, eitherRight(2))),
       S.concat(right(delay(10, 1)), left(delay(10, 'b')))
         .run()
-        .then(x => assert.deepEqual(x, eitherRight(1))),
+        .then(x => assert.deepStrictEqual(x, eitherRight(1))),
       S.concat(right(delay(10, 1)), right(delay(10, 2)))
         .run()
-        .then(x => assert.deepEqual(x, eitherRight(3)))
+        .then(x => assert.deepStrictEqual(x, eitherRight(3)))
     ])
   })
 
@@ -240,22 +384,158 @@ describe('TaskEither', () => {
     it('concat (right)', () => {
       return M.concat(right(delay(10, 'a')), right(delay(10, 'b')))
         .run()
-        .then(x => assert.deepEqual(x, eitherRight('ab')))
+        .then(x => assert.deepStrictEqual(x, eitherRight('ab')))
     })
     it('concat (left)', () => {
       return M.concat(right(delay(10, 'a')), left(delay(10, 'b')))
         .run()
-        .then(x => assert.deepEqual(x, eitherLeft('b')))
+        .then(x => assert.deepStrictEqual(x, eitherLeft('b')))
     })
     it('empty (right)', () => {
       return M.concat(right(delay(10, 'a')), M.empty)
         .run()
-        .then(x => assert.deepEqual(x, eitherRight('a')))
+        .then(x => assert.deepStrictEqual(x, eitherRight('a')))
     })
     it('empty (left)', () => {
       return M.concat(M.empty, right(delay(10, 'a')))
         .run()
-        .then(x => assert.deepEqual(x, eitherRight('a')))
+        .then(x => assert.deepStrictEqual(x, eitherRight('a')))
+    })
+  })
+
+  it('sequence parallel', () => {
+    const log: Array<string> = []
+    const append = (message: string): TaskEither<void, number> =>
+      right(new Task(() => Promise.resolve(log.push(message))))
+    const t1 = append('start 1').chain(() => append('end 1'))
+    const t2 = append('start 2').chain(() => append('end 2'))
+    const sequenceParallel = sequence(taskEither, array)
+    return sequenceParallel([t1, t2])
+      .run()
+      .then(ns => {
+        assert.deepStrictEqual(ns, eitherRight([3, 4]))
+        assert.deepStrictEqual(log, ['start 1', 'start 2', 'end 1', 'end 2'])
+      })
+  })
+
+  it('sequence series', () => {
+    const log: Array<string> = []
+    const append = (message: string): TaskEither<void, number> =>
+      right(new Task(() => Promise.resolve(log.push(message))))
+    const t1 = append('start 1').chain(() => append('end 1'))
+    const t2 = append('start 2').chain(() => append('end 2'))
+    const sequenceSeries = sequence(taskEitherSeq, array)
+    return sequenceSeries([t1, t2])
+      .run()
+      .then(ns => {
+        assert.deepStrictEqual(ns, eitherRight([2, 4]))
+        assert.deepStrictEqual(log, ['start 1', 'end 1', 'start 2', 'end 2'])
+      })
+  })
+
+  it('foldTaskEither', () => {
+    const whenLeft = (s: string) =>
+      s.length >= 2 ? taskEither.of<boolean, string>('okleft') : fromLeft<boolean, string>(false)
+    const whenRight = (n: number) =>
+      n >= 2 ? taskEither.of<boolean, string>('okright') : fromLeft<boolean, string>(true)
+
+    const tasks = [
+      fromLeft<string, number>('a')
+        .foldTaskEither(whenLeft, whenRight)
+        .run(),
+      fromLeft<string, number>('aa')
+        .foldTaskEither(whenLeft, whenRight)
+        .run(),
+      taskEither
+        .of<string, number>(1)
+        .foldTaskEither(whenLeft, whenRight)
+        .run(),
+      taskEither
+        .of<string, number>(2)
+        .foldTaskEither(whenLeft, whenRight)
+        .run()
+    ]
+    return Promise.all(tasks).then(([r1, r2, r3, r4]) => {
+      assert.deepStrictEqual(r1, eitherLeft(false))
+      assert.deepStrictEqual(r2, eitherRight('okleft'))
+      assert.deepStrictEqual(r3, eitherLeft(true))
+      assert.deepStrictEqual(r4, eitherRight('okright'))
+    })
+  })
+
+  it('foldTask', () => {
+    const whenLeft = () => task.of('left')
+    const whenRight = () => task.of('right')
+
+    const tasks = [
+      fromLeft<string, number>('a')
+        .foldTask(whenLeft, whenRight)
+        .run(),
+      taskEither
+        .of<string, number>(1)
+        .foldTask(whenLeft, whenRight)
+        .run()
+    ]
+    return Promise.all(tasks).then(([r1, r2]) => {
+      assert.deepStrictEqual(r1, 'left')
+      assert.deepStrictEqual(r2, 'right')
+    })
+  })
+
+  it('filterOrElse', () => {
+    const isNumber = (u: string | number): u is number => typeof u === 'number'
+    const actual = taskEither.of<string, string | number>(12).filterOrElse(isNumber, 'not a number')
+    const tasks = [
+      taskEither.of<string, string | number>(12).filterOrElse(n => n > 10, 'bar'),
+      taskEither.of<string, string | number>(7).filterOrElse(n => n > 10, 'bar'),
+      fromLeft<string, string | number>('foo').filterOrElse(n => n > 10, 'bar'),
+      actual
+    ]
+    return Promise.all(tasks.map(te => te.run())).then(([r1, r2, r3, r4]) => {
+      assert.deepStrictEqual(r1, eitherRight(12))
+      assert.deepStrictEqual(r2, eitherLeft('bar'))
+      assert.deepStrictEqual(r3, eitherLeft('foo'))
+      assert.deepStrictEqual(r4, eitherRight(12))
+    })
+  })
+
+  it('filterOrElseL', () => {
+    const isNumber = (u: string | number): u is number => typeof u === 'number'
+    const actual = taskEither.of<string, string | number>(12).filterOrElseL(isNumber, () => 'not a number')
+    const tasks = [
+      taskEither.of<string, number>(12).filterOrElseL(n => n > 10, () => 'bar'),
+      taskEither.of<string, number>(7).filterOrElseL(n => n > 10, () => 'bar'),
+      fromLeft<string, number>('foo').filterOrElseL(n => n > 10, () => 'bar'),
+      taskEither.of<string, number>(7).filterOrElseL(n => n > 10, n => `invalid ${n}`),
+      actual
+    ]
+    return Promise.all(tasks.map(te => te.run())).then(([r1, r2, r3, r4, r5]) => {
+      assert.deepStrictEqual(r1, eitherRight(12))
+      assert.deepStrictEqual(r2, eitherLeft('bar'))
+      assert.deepStrictEqual(r3, eitherLeft('foo'))
+      assert.deepStrictEqual(r4, eitherLeft('invalid 7'))
+      assert.deepStrictEqual(r5, eitherRight(12))
+    })
+  })
+
+  describe('MonadThrow', () => {
+    it('should obey the law', () => {
+      return Promise.all([
+        taskEither.chain(taskEither.throwError('error'), a => taskEither.of(a)).run(),
+        taskEither.throwError('error').run()
+      ]).then(([e1, e2]) => {
+        assert.deepStrictEqual(e1, e2)
+      })
+    })
+
+    it('fromOption', () => {
+      return Promise.all([
+        taskEither.fromOption(none, 'error').run(),
+        taskEither.fromOption(some(1), 'error').run()
+      ]).then(([e1, e2]) => {
+        assert.deepStrictEqual(e1, eitherLeft('error'))
+        assert.deepStrictEqual(e2, eitherRight(1))
+      })
     })
   })
 })

@@ -1,22 +1,28 @@
-import { Semigroup } from './Semigroup'
-import { Monoid } from './Monoid'
-import { Option, none, some } from './Option'
-import { isOutOfBound, snoc, take, drop, array, isEmpty, cons, empty } from './Array'
-import { Applicative1, Applicative } from './Applicative'
-import { NonEmptyArray } from './NonEmptyArray'
-import { Foldable1 } from './Foldable'
-import { HKT } from './HKT'
-import { Traversable1 } from './Traversable'
+/**
+ * @file Provides a pointed array, which is a non-empty zipper-like array structure that tracks an index (focus)
+ * position in an array. Focus can be moved forward and backwards through the array.
+ *
+ * The array `[1, 2, 3, 4]` with focus on `3` is represented by `new Zipper([1, 2], 3, [4])`
+ *
+ * Adapted from
+ *
+ * - https://github.com/DavidHarrison/purescript-list-zipper
+ * - https://github.com/thunklife/purescript-zipper
+ * - https://github.com/scalaz/scalaz/blob/series/7.3.x/core/src/main/scala/scalaz/Zipper.scala
+ */
+import { Applicative, Applicative1 } from './Applicative'
+import { array, cons, drop, empty, isEmpty, isOutOfBound, snoc, take, getShow as getArrayShow } from './Array'
 import { Comonad1 } from './Comonad'
-import { toString, decrement, increment } from './function'
-
-/*
-  Adapted from
-
-  - https://github.com/DavidHarrison/purescript-list-zipper
-  - https://github.com/thunklife/purescript-zipper
-  - https://github.com/scalaz/scalaz/blob/series/7.3.x/core/src/main/scala/scalaz/Zipper.scala
-*/
+import { Foldable2v1 } from './Foldable2v'
+import { decrement, increment, toString } from './function'
+import { HKT } from './HKT'
+import { Monoid } from './Monoid'
+import { NonEmptyArray } from './NonEmptyArray'
+import { NonEmptyArray as NonEmptyArray2v } from './NonEmptyArray2v'
+import { none, Option, some } from './Option'
+import { Semigroup } from './Semigroup'
+import { Traversable2v1 } from './Traversable2v'
+import { Show } from './Show'
 
 declare module './HKT' {
   interface URI2HKT<A> {
@@ -29,15 +35,7 @@ export const URI = 'Zipper'
 export type URI = typeof URI
 
 /**
- * Provides a pointed array, which is a non-empty zipper-like array structure that tracks an index (focus)
- * position in an array. Focus can be moved forward and backwards through the array.
- *
- * @data
- * @constructor Zipper
  * @since 1.9.0
- * @example
- *
- * The array `[1, 2, 3, 4]` with focus on `3` is represented by `new Zipper([1, 2], 3, [4])`
  */
 export class Zipper<A> {
   readonly _A!: A
@@ -180,7 +178,16 @@ export class Zipper<A> {
 }
 
 /**
- * @function
+ * @since 1.17.0
+ */
+export const getShow = <A>(S: Show<A>): Show<Zipper<A>> => {
+  const SA = getArrayShow(S)
+  return {
+    show: z => `new Zipper(${SA.show(z.lefts)}, ${S.show(z.focus)}, ${SA.show(z.rights)})`
+  }
+}
+
+/**
  * @since 1.9.0
  */
 export const fromArray = <A>(as: Array<A>, focusIndex: number = 0): Option<Zipper<A>> => {
@@ -192,11 +199,17 @@ export const fromArray = <A>(as: Array<A>, focusIndex: number = 0): Option<Zippe
 }
 
 /**
- * @function
  * @since 1.9.0
  */
 export const fromNonEmptyArray = <A>(nea: NonEmptyArray<A>): Zipper<A> => {
   return new Zipper(empty, nea.head, nea.tail)
+}
+
+/**
+ * @since 1.17.0
+ */
+export const fromNonEmptyArray2v = <A>(nea: NonEmptyArray2v<A>): Zipper<A> => {
+  return new Zipper(empty, nea[0], nea.slice(1))
 }
 
 const map = <A, B>(fa: Zipper<A>, f: (a: A) => B): Zipper<B> => {
@@ -215,12 +228,40 @@ const reduce = <A, B>(fa: Zipper<A>, b: B, f: (b: B, a: A) => B): B => {
   return fa.reduce(b, f)
 }
 
-const traverse = <F>(F: Applicative<F>): (<A, B>(ta: Zipper<A>, f: (a: A) => HKT<F, B>) => HKT<F, Zipper<B>>) => {
+const foldMap = <M>(M: Monoid<M>) => <A>(fa: Zipper<A>, f: (a: A) => M): M => {
+  const lefts = fa.lefts.reduce((acc, a) => M.concat(acc, f(a)), M.empty)
+  const rights = fa.rights.reduce((acc, a) => M.concat(acc, f(a)), M.empty)
+  return M.concat(M.concat(lefts, f(fa.focus)), rights)
+}
+
+const foldr = <A, B>(fa: Zipper<A>, b: B, f: (a: A, b: B) => B): B => {
+  const rights = fa.rights.reduceRight((acc, a) => f(a, acc), b)
+  const focus = f(fa.focus, rights)
+  return fa.lefts.reduceRight((acc, a) => f(a, acc), focus)
+}
+
+function traverse<F>(F: Applicative<F>): <A, B>(ta: Zipper<A>, f: (a: A) => HKT<F, B>) => HKT<F, Zipper<B>> {
   const traverseF = array.traverse(F)
-  return (ta, f) => {
-    const len = ta.lefts.length
-    return F.map(traverseF(ta.toArray(), f), bs => new Zipper(take(len, bs), bs[len], drop(len + 1, bs)))
-  }
+  return <A, B>(ta: Zipper<A>, f: (a: A) => HKT<F, B>) =>
+    F.ap(
+      F.ap(
+        F.map(traverseF(ta.lefts, f), lefts => (focus: B) => (rights: Array<B>) => new Zipper(lefts, focus, rights)),
+        f(ta.focus)
+      ),
+      traverseF(ta.rights, f)
+    )
+}
+
+function sequence<F>(F: Applicative<F>): <A>(ta: Zipper<HKT<F, A>>) => HKT<F, Zipper<A>> {
+  const sequenceF = array.sequence(F)
+  return <A>(ta: Zipper<HKT<F, A>>) =>
+    F.ap(
+      F.ap(
+        F.map(sequenceF(ta.lefts), lefts => (focus: A) => (rights: Array<A>) => new Zipper(lefts, focus, rights)),
+        ta.focus
+      ),
+      sequenceF(ta.rights)
+    )
 }
 
 const extract = <A>(fa: Zipper<A>): A => {
@@ -238,7 +279,6 @@ const extend = <A, B>(fa: Zipper<A>, f: (fa: Zipper<A>) => B): Zipper<B> => {
 }
 
 /**
- * @function
  * @since 1.9.0
  */
 export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<Zipper<A>> => {
@@ -248,7 +288,6 @@ export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<Zipper<A>> => {
 }
 
 /**
- * @function
  * @since 1.9.0
  */
 export const getMonoid = <A>(M: Monoid<A>): Monoid<Zipper<A>> => {
@@ -259,10 +298,9 @@ export const getMonoid = <A>(M: Monoid<A>): Monoid<Zipper<A>> => {
 }
 
 /**
- * @instance
  * @since 1.9.0
  */
-export const zipper: Applicative1<URI> & Foldable1<URI> & Traversable1<URI> & Comonad1<URI> = {
+export const zipper: Applicative1<URI> & Foldable2v1<URI> & Traversable2v1<URI> & Comonad1<URI> = {
   URI,
   map,
   of,
@@ -270,5 +308,8 @@ export const zipper: Applicative1<URI> & Foldable1<URI> & Traversable1<URI> & Co
   extend,
   extract,
   reduce,
-  traverse
+  foldMap,
+  foldr,
+  traverse,
+  sequence
 }

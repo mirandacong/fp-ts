@@ -1,7 +1,12 @@
+/**
+ * @file `IO<A>` represents a synchronous computation that yields a value of type `A` and **never fails**.
+ * If you want to represent a synchronous computation that may fail, please see `IOEither`.
+ */
 import { Monad1 } from './Monad'
 import { Monoid } from './Monoid'
 import { Semigroup } from './Semigroup'
-import { Lazy, constIdentity, toString, constant } from './function'
+import { Lazy, constIdentity, toString, constant, identity } from './function'
+import { MonadIO1 } from './MonadIO'
 
 declare module './HKT' {
   interface URI2HKT<A> {
@@ -14,8 +19,6 @@ export const URI = 'IO'
 export type URI = typeof URI
 
 /**
- * @data
- * @constructor IO
  * @since 1.0.0
  */
 export class IO<A> {
@@ -28,6 +31,9 @@ export class IO<A> {
   ap<B>(fab: IO<(a: A) => B>): IO<B> {
     return new IO(() => fab.run()(this.run()))
   }
+  /**
+   * Flipped version of `ap`
+   */
   ap_<B, C>(this: IO<(b: B) => C>, fb: IO<B>): IO<C> {
     return fb.ap(this)
   }
@@ -73,7 +79,6 @@ const chain = <A, B>(fa: IO<A>, f: (a: A) => IO<B>): IO<B> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<IO<A>> => {
@@ -88,21 +93,22 @@ export const getSemigroup = <A>(S: Semigroup<A>): Semigroup<IO<A>> => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getMonoid = <A>(M: Monoid<A>): Monoid<IO<A>> => {
   return { ...getSemigroup(M), empty: of(M.empty) }
 }
 
+const fromIO = identity
+
 /**
- * @instance
  * @since 1.0.0
  */
-export const io: Monad1<URI> = {
+export const io: Monad1<URI> & MonadIO1<URI> = {
   URI,
   map,
   of,
   ap,
-  chain
+  chain,
+  fromIO
 }

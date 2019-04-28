@@ -14,8 +14,6 @@ export const URI = 'IxIO'
 export type URI = typeof URI
 
 /**
- * @data
- * @constructor IxIO
  * @since 1.0.0
  */
 export class IxIO<I, O, A> {
@@ -42,7 +40,6 @@ export class IxIO<I, O, A> {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const iof = <I, A>(a: A): IxIO<I, I, A> => {
@@ -68,7 +65,6 @@ const chain = <I, A, B>(fa: IxIO<I, I, A>, f: (a: A) => IxIO<I, I, B>): IxIO<I, 
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const getMonad = <I = never>(): Monad3C<URI, I, I> => {
@@ -84,7 +80,6 @@ export const getMonad = <I = never>(): Monad3C<URI, I, I> => {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const ixIO: IxMonad3<URI> = {

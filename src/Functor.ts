@@ -1,8 +1,5 @@
-import { HKT, Type, Type2, Type3, URIS, URIS2, URIS3 } from './HKT'
-import { constant } from './function'
-
 /**
- * A `Functor` is a type constructor which supports a mapping operation `map`.
+ * @file A `Functor` is a type constructor which supports a mapping operation `map`.
  *
  * `map` can be used to turn functions `a -> b` into functions `f a -> f b` whose argument and return types use the type
  * constructor `f` to represent some computational context.
@@ -11,8 +8,11 @@ import { constant } from './function'
  *
  * 1. Identity: `F.map(fa, a => a) = fa`
  * 2. Composition: `F.map(fa, a => bc(ab(a))) = F.map(F.map(fa, ab), bc)`
- *
- * @typeclass
+ */
+import { constant } from './function'
+import { HKT, Type, Type2, Type3, Type4, URIS, URIS2, URIS3, URIS4 } from './HKT'
+
+/**
  * @since 1.0.0
  */
 export interface Functor<F> {
@@ -33,6 +33,11 @@ export interface Functor2<F extends URIS2> {
 export interface Functor3<F extends URIS3> {
   readonly URI: F
   readonly map: <U, L, A, B>(fa: Type3<F, U, L, A>, f: (a: A) => B) => Type3<F, U, L, B>
+}
+
+export interface Functor4<F extends URIS4> {
+  readonly URI: F
+  readonly map: <X, U, L, A, B>(fa: Type4<F, X, U, L, A>, f: (a: A) => B) => Type4<F, X, U, L, B>
 }
 
 export interface Functor2C<F extends URIS2, L> {
@@ -57,35 +62,37 @@ export interface FunctorComposition11<F extends URIS, G extends URIS> {
 }
 
 export interface FunctorComposition12<F extends URIS, G extends URIS2> {
-  readonly map: <L, A, B>(fa: Type<F, Type2<G, L, A>>, f: (a: A) => B) => Type<F, Type2<G, L, B>>
+  readonly map: <LG, A, B>(fa: Type<F, Type2<G, LG, A>>, f: (a: A) => B) => Type<F, Type2<G, LG, B>>
 }
 
-export interface FunctorComposition12C<F extends URIS, G extends URIS2, L> {
-  readonly map: <A, B>(fa: Type<F, Type2<G, L, A>>, f: (a: A) => B) => Type<F, Type2<G, L, B>>
+export interface FunctorComposition12C<F extends URIS, G extends URIS2, LG> {
+  readonly map: <A, B>(fa: Type<F, Type2<G, LG, A>>, f: (a: A) => B) => Type<F, Type2<G, LG, B>>
 }
 
 export interface FunctorComposition21<F extends URIS2, G extends URIS> {
-  readonly map: <L, A, B>(fa: Type2<F, L, Type<G, A>>, f: (a: A) => B) => Type2<F, L, Type<G, B>>
+  readonly map: <LF, A, B>(fa: Type2<F, LF, Type<G, A>>, f: (a: A) => B) => Type2<F, LF, Type<G, B>>
 }
 
-export interface FunctorComposition2C1<F extends URIS2, G extends URIS, L> {
-  readonly map: <A, B>(fa: Type2<F, L, Type<G, A>>, f: (a: A) => B) => Type2<F, L, Type<G, B>>
+export interface FunctorComposition2C1<F extends URIS2, G extends URIS, LF> {
+  readonly map: <A, B>(fa: Type2<F, LF, Type<G, A>>, f: (a: A) => B) => Type2<F, LF, Type<G, B>>
 }
 
 export interface FunctorComposition22<F extends URIS2, G extends URIS2> {
-  readonly map: <L, M, A, B>(fa: Type2<F, L, Type2<G, M, A>>, f: (a: A) => B) => Type2<F, L, Type2<G, M, B>>
+  readonly map: <LF, LG, A, B>(fa: Type2<F, LF, Type2<G, LG, A>>, f: (a: A) => B) => Type2<F, LF, Type2<G, LG, B>>
 }
 
-export interface FunctorComposition22C<F extends URIS2, G extends URIS2, M> {
-  readonly map: <L, A, B>(fa: Type2<F, L, Type2<G, M, A>>, f: (a: A) => B) => Type2<F, L, Type2<G, M, B>>
+export interface FunctorComposition22C<F extends URIS2, G extends URIS2, LG> {
+  readonly map: <LF, A, B>(fa: Type2<F, LF, Type2<G, LG, A>>, f: (a: A) => B) => Type2<F, LF, Type2<G, LG, B>>
 }
 
-export interface FunctorComposition3C1<F extends URIS3, G extends URIS, U, L> {
-  readonly map: <A, B>(fa: Type3<F, U, L, Type<G, A>>, f: (a: A) => B) => Type3<F, U, L, Type<G, B>>
+export interface FunctorComposition3C1<F extends URIS3, G extends URIS, UF, LF> {
+  readonly map: <A, B>(fa: Type3<F, UF, LF, Type<G, A>>, f: (a: A) => B) => Type3<F, UF, LF, Type<G, B>>
 }
 
 /**
  * Lift a function of one argument to a function which accepts and returns values wrapped with the type constructor `F`
+ *
+ * @since 1.0.0
  */
 export function lift<F extends URIS3>(
   F: Functor3<F>
@@ -101,16 +108,15 @@ export function lift<F extends URIS2, L>(
 ): <A, B>(f: (a: A) => B) => (fa: Type2<F, L, A>) => Type2<F, L, B>
 export function lift<F extends URIS>(F: Functor1<F>): <A, B>(f: (a: A) => B) => (fa: Type<F, A>) => Type<F, B>
 export function lift<F>(F: Functor<F>): <A, B>(f: (a: A) => B) => (fa: HKT<F, A>) => HKT<F, B>
-/**
- * Lift a function of one argument to a function which accepts and returns values wrapped with the type constructor `F`
- * @function
- * @since 1.0.0
- */
 export function lift<F>(F: Functor<F>): <A, B>(f: (a: A) => B) => (fa: HKT<F, A>) => HKT<F, B> {
   return f => fa => F.map(fa, f)
 }
 
-/** Ignore the return value of a computation, using the specified return value instead (`<$`) */
+/**
+ * Ignore the return value of a computation, using the specified return value instead (`<$`)
+ *
+ * @since 1.0.0
+ */
 export function voidRight<F extends URIS3>(
   F: Functor3<F>
 ): <U, L, A, B>(a: A, fb: Type3<F, U, L, B>) => Type3<F, U, L, A>
@@ -121,16 +127,15 @@ export function voidRight<F extends URIS2>(F: Functor2<F>): <L, A, B>(a: A, fb: 
 export function voidRight<F extends URIS2, L>(F: Functor2C<F, L>): <A, B>(a: A, fb: Type2<F, L, B>) => Type2<F, L, A>
 export function voidRight<F extends URIS>(F: Functor1<F>): <A, B>(a: A, fb: Type<F, B>) => Type<F, A>
 export function voidRight<F>(F: Functor<F>): <A, B>(a: A, fb: HKT<F, B>) => HKT<F, A>
-/**
- * Ignore the return value of a computation, using the specified return value instead (`<$`)
- * @function
- * @since 1.0.0
- */
 export function voidRight<F>(F: Functor<F>): <A, B>(a: A, fb: HKT<F, B>) => HKT<F, A> {
   return (a, fb) => F.map(fb, constant(a))
 }
 
-/** A version of {@link voidRight} with its arguments flipped (`$>`) */
+/**
+ * A version of `voidRight` with its arguments flipped (`$>`)
+ *
+ * @since 1.0.0
+ */
 export function voidLeft<F extends URIS3>(
   F: Functor3<F>
 ): <U, L, A, B>(fa: Type3<F, U, L, A>, b: B) => Type3<F, U, L, B>
@@ -141,16 +146,15 @@ export function voidLeft<F extends URIS2>(F: Functor2<F>): <L, A, B>(fa: Type2<F
 export function voidLeft<F extends URIS2, L>(F: Functor2C<F, L>): <A, B>(fa: Type2<F, L, A>, b: B) => Type2<F, L, B>
 export function voidLeft<F extends URIS>(F: Functor1<F>): <A, B>(fa: Type<F, A>, b: B) => Type<F, B>
 export function voidLeft<F>(F: Functor<F>): <A, B>(fa: HKT<F, A>, b: B) => HKT<F, B>
-/**
- * A version of {@link voidRight} with its arguments flipped (`$>`)
- * @function
- * @since 1.0.0
- */
 export function voidLeft<F>(F: Functor<F>): <A, B>(fa: HKT<F, A>, b: B) => HKT<F, B> {
   return (fa, b) => F.map(fa, constant(b))
 }
 
-/** Apply a value in a computational context to a value in no context. Generalizes `flip` */
+/**
+ * Apply a value in a computational context to a value in no context. Generalizes `flip`
+ *
+ * @since 1.0.0
+ */
 export function flap<F extends URIS3>(
   functor: Functor3<F>
 ): <U, L, A, B>(a: A, ff: Type3<F, U, L, (a: A) => B>) => Type3<F, U, L, B>
@@ -165,23 +169,37 @@ export function flap<F extends URIS2, L>(
 ): <A, B>(a: A, ff: Type2<F, L, (a: A) => B>) => Type2<F, L, B>
 export function flap<F extends URIS>(functor: Functor1<F>): <A, B>(a: A, ff: Type<F, (a: A) => B>) => Type<F, B>
 export function flap<F>(functor: Functor<F>): <A, B>(a: A, ff: HKT<F, (a: A) => B>) => HKT<F, B>
-/**
- * Apply a value in a computational context to a value in no context. Generalizes `flip`
- * @function
- * @since 1.0.0
- */
 export function flap<F>(functor: Functor<F>): <A, B>(a: A, ff: HKT<F, (a: A) => B>) => HKT<F, B> {
   return (a, ff) => functor.map(ff, f => f(a))
 }
 
+/**
+ * @since 1.0.0
+ */
+export function getFunctorComposition<F extends URIS3, G extends URIS, UF, LF>(
+  F: Functor3C<F, UF, LF>,
+  G: Functor1<G>
+): FunctorComposition3C1<F, G, UF, LF>
+export function getFunctorComposition<F extends URIS2, G extends URIS2, LG>(
+  F: Functor2<F>,
+  G: Functor2C<G, LG>
+): FunctorComposition22C<F, G, LG>
 export function getFunctorComposition<F extends URIS2, G extends URIS2>(
   F: Functor2<F>,
   G: Functor2<G>
 ): FunctorComposition22<F, G>
+export function getFunctorComposition<F extends URIS2, G extends URIS, LF>(
+  F: Functor2C<F, LF>,
+  G: Functor1<G>
+): FunctorComposition2C1<F, G, LF>
 export function getFunctorComposition<F extends URIS2, G extends URIS>(
   F: Functor2<F>,
   G: Functor1<G>
 ): FunctorComposition21<F, G>
+export function getFunctorComposition<F extends URIS, G extends URIS2, LG>(
+  F: Functor1<F>,
+  G: Functor2C<G, LG>
+): FunctorComposition12C<F, G, LG>
 export function getFunctorComposition<F extends URIS, G extends URIS2>(
   F: Functor1<F>,
   G: Functor2<G>
@@ -191,10 +209,6 @@ export function getFunctorComposition<F extends URIS, G extends URIS>(
   G: Functor1<G>
 ): FunctorComposition11<F, G>
 export function getFunctorComposition<F, G>(F: Functor<F>, G: Functor<G>): FunctorComposition<F, G>
-/**
- * @function
- * @since 1.0.0
- */
 export function getFunctorComposition<F, G>(F: Functor<F>, G: Functor<G>): FunctorComposition<F, G> {
   return {
     map: (fa, f) => F.map(fa, ga => G.map(ga, f))

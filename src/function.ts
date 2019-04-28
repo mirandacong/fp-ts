@@ -1,7 +1,6 @@
 import { HKT } from './HKT'
 
 /**
- * @function
  * @since 1.0.0
  */
 export const identity = <A>(a: A): A => {
@@ -9,7 +8,6 @@ export const identity = <A>(a: A): A => {
 }
 
 /**
- * @constant
  * @since 1.0.0
  */
 export const unsafeCoerce: <A, B>(a: A) => B = identity as any
@@ -18,6 +16,16 @@ export const unsafeCoerce: <A, B>(a: A) => B = identity as any
  * Thunk type
  */
 export type Lazy<A> = () => A
+
+/**
+ * @example
+ * import { FunctionN } from 'fp-ts/lib/function'
+ *
+ * export const sum: FunctionN<[number, number], number> = (a, b) => a + b
+ *
+ * @since 1.16.0
+ */
+export type FunctionN<A extends Array<unknown>, B> = (...args: A) => B
 
 export type Function1<A, B> = (a: A) => B
 export type Function2<A, B, C> = (a: A, b: B) => C
@@ -47,25 +55,22 @@ export type Predicate<A> = (a: A) => boolean
 export type Refinement<A, B extends A> = (a: A) => a is B
 
 /**
- * @function
  * @since 1.0.0
  */
 export const not = <A>(predicate: Predicate<A>): Predicate<A> => {
   return a => !predicate(a)
 }
 
-export function or<A, B1 extends A, B2 extends A>(p1: Refinement<A, B1>, p2: Refinement<A, B2>): Refinement<A, B1 | B2>
-export function or<A>(p1: Predicate<A>, p2: Predicate<A>): Predicate<A>
 /**
- * @function
  * @since 1.0.0
  */
+export function or<A, B1 extends A, B2 extends A>(p1: Refinement<A, B1>, p2: Refinement<A, B2>): Refinement<A, B1 | B2>
+export function or<A>(p1: Predicate<A>, p2: Predicate<A>): Predicate<A>
 export function or<A>(p1: Predicate<A>, p2: Predicate<A>): Predicate<A> {
   return a => p1(a) || p2(a)
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const and = <A>(p1: Predicate<A>, p2: Predicate<A>): Predicate<A> => {
@@ -80,7 +85,6 @@ export type Kleisli<F, A, B> = (a: A) => HKT<F, B>
 export type Cokleisli<F, A, B> = (fa: HKT<F, A>) => B
 
 /**
- * @function
  * @since 1.0.0
  */
 export const constant = <A>(a: A): Lazy<A> => {
@@ -89,7 +93,7 @@ export const constant = <A>(a: A): Lazy<A> => {
 
 /**
  * A thunk that returns always `true`
- * @function
+ *
  * @since 1.0.0
  */
 export const constTrue = (): boolean => {
@@ -98,7 +102,7 @@ export const constTrue = (): boolean => {
 
 /**
  * A thunk that returns always `false`
- * @function
+ *
  * @since 1.0.0
  */
 export const constFalse = (): boolean => {
@@ -107,7 +111,7 @@ export const constFalse = (): boolean => {
 
 /**
  * A thunk that returns always `null`
- * @function
+ *
  * @since 1.0.0
  */
 export const constNull = (): null => {
@@ -116,7 +120,7 @@ export const constNull = (): null => {
 
 /**
  * A thunk that returns always `undefined`
- * @function
+ *
  * @since 1.0.0
  */
 export const constUndefined = (): undefined => {
@@ -124,8 +128,17 @@ export const constUndefined = (): undefined => {
 }
 
 /**
+ * A thunk that returns always `void`
+ *
+ * @since 1.14.0
+ */
+export const constVoid = (): void => {
+  return
+}
+
+/**
  * Flips the order of the arguments to a function of two arguments.
- * @function
+ *
  * @since 1.0.0
  */
 export const flip = <A, B, C>(f: Curried2<A, B, C>): Curried2<B, A, C> => {
@@ -134,13 +147,16 @@ export const flip = <A, B, C>(f: Curried2<A, B, C>): Curried2<B, A, C> => {
 
 /**
  * The `on` function is used to change the domain of a binary operator.
- * @function
+ *
  * @since 1.0.0
  */
 export const on = <B, C>(op: BinaryOperation<B, C>) => <A>(f: (a: A) => B): BinaryOperation<A, C> => {
   return (x, y) => op(f(x), f(y))
 }
 
+/**
+ * @since 1.0.0
+ */
 export function compose<A, B, C>(bc: (b: B) => C, ab: (a: A) => B): (a: A) => C
 export function compose<A, B, C, D>(cd: (c: C) => D, bc: (b: B) => C, ab: (a: A) => B): (a: A) => D
 export function compose<A, B, C, D, E>(de: (d: D) => E, cd: (c: C) => D, bc: (b: B) => C, ab: (a: A) => B): (a: A) => E
@@ -189,10 +205,6 @@ export function compose<A, B, C, D, E, F, G, H, I, J>(
   bc: (b: B) => C,
   ab: (a: A) => B
 ): (a: A) => J
-/**
- * @function
- * @since 1.0.0
- */
 export function compose(...fns: Array<Function>): Function {
   const len = fns.length - 1
   return function(this: any, x: any) {
@@ -204,6 +216,9 @@ export function compose(...fns: Array<Function>): Function {
   }
 }
 
+/**
+ * @since 1.0.0
+ */
 export function pipe<A, B, C>(ab: (a: A) => B, bc: (b: B) => C): (a: A) => C
 export function pipe<A, B, C, D>(ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D): (a: A) => D
 export function pipe<A, B, C, D, E>(ab: (a: A) => B, bc: (b: B) => C, cd: (c: C) => D, de: (d: D) => E): (a: A) => E
@@ -252,10 +267,6 @@ export function pipe<A, B, C, D, E, F, G, H, I, J>(
   hi: (h: H) => I,
   ij: (i: I) => J
 ): (a: A) => J
-/**
- * @function
- * @since 1.0.0
- */
 export function pipe(...fns: Array<Function>): Function {
   const len = fns.length - 1
   return function(this: any, x: any) {
@@ -268,7 +279,6 @@ export function pipe(...fns: Array<Function>): Function {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
 export const concat = <A>(x: Array<A>, y: Array<A>): Array<A> => {
@@ -284,6 +294,9 @@ export const concat = <A>(x: Array<A>, y: Array<A>): Array<A> => {
   return r
 }
 
+/**
+ * @since 1.0.0
+ */
 export function curried(f: Function, n: number, acc: Array<any>) {
   return function(this: any, x: any) {
     const combined = concat(acc, [x])
@@ -291,6 +304,9 @@ export function curried(f: Function, n: number, acc: Array<any>) {
   }
 }
 
+/**
+ * @since 1.0.0
+ */
 export function curry<A, B, C>(f: Function2<A, B, C>): Curried2<A, B, C>
 export function curry<A, B, C, D>(f: Function3<A, B, C, D>): Curried3<A, B, C, D>
 export function curry<A, B, C, D, E>(f: Function4<A, B, C, D, E>): Curried4<A, B, C, D, E>
@@ -303,10 +319,6 @@ export function curry<A, B, C, D, E, F, G, H, I>(
 export function curry<A, B, C, D, E, F, G, H, I, J>(
   f: Function9<A, B, C, D, E, F, G, H, I, J>
 ): Curried9<A, B, C, D, E, F, G, H, I, J>
-/**
- * @function
- * @since 1.0.0
- */
 export function curry(f: Function) {
   return curried(f, f.length - 1, [])
 }
@@ -315,7 +327,6 @@ export function curry(f: Function) {
 const getFunctionName = (f: Function): string => (f as any).displayName || f.name || `<function${f.length}>`
 
 /**
- * @function
  * @since 1.0.0
  */
 export const toString = (x: any): string => {
@@ -334,7 +345,7 @@ export const toString = (x: any): string => {
   if (x == null) {
     return String(x)
   }
-  if (x.toString !== Object.prototype.toString) {
+  if (typeof x.toString === 'function' && x.toString !== Object.prototype.toString) {
     return x.toString()
   }
   try {
@@ -345,16 +356,15 @@ export const toString = (x: any): string => {
 }
 
 /**
- * @function
  * @since 1.0.0
  */
-export const tuple = <A, B>(a: A, b: B): [A, B] => {
-  return [a, b]
+export const tuple = <T extends Array<any>>(...t: T): T => {
+  return t
 }
 
 /**
- * @function
  * @since 1.0.0
+ * @deprecated
  */
 export const tupleCurried = <A>(a: A) => <B>(b: B): [A, B] => {
   return [a, b]
@@ -362,7 +372,7 @@ export const tupleCurried = <A>(a: A) => <B>(b: B): [A, B] => {
 
 /**
  * Applies a function to an argument ($)
- * @function
+ *
  * @since 1.0.0
  */
 export const apply = <A, B>(f: (a: A) => B) => (a: A): B => {
@@ -371,20 +381,24 @@ export const apply = <A, B>(f: (a: A) => B) => (a: A): B => {
 
 /**
  * Applies an argument to a function (#)
- * @function
+ *
  * @since 1.0.0
  */
 export const applyFlipped = <A>(a: A) => <B>(f: (a: A) => B): B => {
   return f(a)
 }
 
-/** For use with phantom fields */
+/**
+ * For use with phantom fields
+ *
+ * @since 1.0.0
+ */
 export const phantom: any = undefined
 
 /**
  * A thunk that returns always the `identity` function.
  * For use with `applySecond` methods.
- * @function
+ *
  * @since 1.5.0
  */
 export const constIdentity = (): (<A>(a: A) => A) => {
@@ -392,7 +406,6 @@ export const constIdentity = (): (<A>(a: A) => A) => {
 }
 
 /**
- * @function
  * @since 1.9.0
  */
 export const increment = (n: number): number => {
@@ -400,7 +413,6 @@ export const increment = (n: number): number => {
 }
 
 /**
- * @function
  * @since 1.9.0
  */
 export const decrement = (n: number): number => {

@@ -28,6 +28,8 @@ import * as chain from './Chain'
 export { chain }
 import * as chainRec from './ChainRec'
 export { chainRec }
+import * as choice from './Choice'
+export { choice }
 import * as comonad from './Comonad'
 export { comonad }
 import * as console from './Console'
@@ -36,6 +38,8 @@ import * as const_ from './Const'
 export { const_ as const }
 import * as contravariant from './Contravariant'
 export { contravariant }
+import * as date from './Date'
+export { date }
 import * as distributiveLattice from './DistributiveLattice'
 export { distributiveLattice }
 import * as either from './Either'
@@ -48,14 +52,28 @@ import * as extend from './Extend'
 export { extend }
 import * as field from './Field'
 export { field }
+import * as filterable from './Filterable'
+export { filterable }
+import * as filterableWithIndex from './FilterableWithIndex'
+export { filterableWithIndex }
 import * as foldable from './Foldable'
 export { foldable }
+import * as foldable2v from './Foldable2v'
+export { foldable2v }
+import * as foldableWithIndex from './FoldableWithIndex'
+export { foldableWithIndex }
 import * as free from './Free'
 export { free }
+import * as freeGroup from './FreeGroup'
+export { freeGroup }
 import * as function_ from './function'
 export { function_ as function }
 import * as functor from './Functor'
 export { functor }
+import * as functorWithIndex from './FunctorWithIndex'
+export { functorWithIndex }
+import * as group from './Group'
+export { group }
 import * as heytingAlgebra from './HeytingAlgebra'
 export { heytingAlgebra }
 import * as hkt from './HKT'
@@ -78,16 +96,28 @@ import * as joinSemilattice from './JoinSemilattice'
 export { joinSemilattice }
 import * as lattice from './Lattice'
 export { lattice }
+import * as magma from './Magma'
+export { magma }
+import * as map from './Map'
+export { map }
 import * as meetSemilattice from './MeetSemilattice'
 export { meetSemilattice }
 import * as monad from './Monad'
 export { monad }
+import * as monadIO from './MonadIO'
+export { monadIO }
+import * as monadTask from './MonadTask'
+export { monadTask }
+import * as monadThrow from './MonadThrow'
+export { monadThrow }
 import * as monoid from './Monoid'
 export { monoid }
 import * as monoidal from './Monoidal'
 export { monoidal }
 import * as nonEmptyArray from './NonEmptyArray'
 export { nonEmptyArray }
+import * as nonEmptyArray2v from './NonEmptyArray2v'
+export { nonEmptyArray2v }
 import * as option from './Option'
 export { option }
 import * as optionT from './OptionT'
@@ -110,6 +140,8 @@ import * as readerT from './ReaderT'
 export { readerT }
 import * as readerTaskEither from './ReaderTaskEither'
 export { readerTaskEither }
+import * as record from './Record'
+export { record }
 import * as ring from './Ring'
 export { ring }
 import * as semigroup from './Semigroup'
@@ -122,6 +154,8 @@ import * as set from './Set'
 export { set }
 import * as setoid from './Setoid'
 export { setoid }
+import * as show from './Show'
+export { show }
 import * as state from './State'
 export { state }
 import * as stateT from './StateT'
@@ -130,6 +164,8 @@ import * as store from './Store'
 export { store }
 import * as strmap from './StrMap'
 export { strmap }
+import * as strong from './Strong'
+export { strong }
 import * as task from './Task'
 export { task }
 import * as taskEither from './TaskEither'
@@ -138,8 +174,14 @@ import * as these from './These'
 export { these }
 import * as trace from './Trace'
 export { trace }
+import * as traced from './Traced'
+export { traced }
 import * as traversable from './Traversable'
 export { traversable }
+import * as traversable2v from './Traversable2v'
+export { traversable2v }
+import * as traversableWithIndex from './TraversableWithIndex'
+export { traversableWithIndex }
 import * as tree from './Tree'
 export { tree }
 import * as tuple from './Tuple'
@@ -152,8 +194,6 @@ import * as writer from './Writer'
 export { writer }
 import * as compactable from './Compactable'
 export { compactable }
-import * as filterable from './Filterable'
-export { filterable }
 import * as witherable from './Witherable'
 export { witherable }
 import * as zipper from './Zipper'

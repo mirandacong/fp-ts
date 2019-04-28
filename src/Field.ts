@@ -1,10 +1,10 @@
+/**
+ * @file Adapted from https://github.com/purescript/purescript-prelude/blob/master/src/Data/Field.purs
+ */
 import { Ring } from './Ring'
 import { Setoid } from './Setoid'
 
-// adapted from https://github.com/purescript/purescript-prelude/blob/master/src/Data/Field.purs
-
 /**
- * @typeclass
  * @since 1.0.0
  */
 export interface Field<A> extends Ring<A> {
@@ -14,7 +14,6 @@ export interface Field<A> extends Ring<A> {
 }
 
 /**
- * @instance
  * @since 1.0.0
  */
 export const fieldNumber: Field<number> = {
@@ -30,7 +29,7 @@ export const fieldNumber: Field<number> = {
 
 /**
  * The *greatest common divisor* of two values
- * @function
+ *
  * @since 1.0.0
  */
 export const gcd = <A>(S: Setoid<A>, field: Field<A>): ((x: A, y: A) => A) => {
@@ -41,7 +40,7 @@ export const gcd = <A>(S: Setoid<A>, field: Field<A>): ((x: A, y: A) => A) => {
 
 /**
  * The *least common multiple* of two values
- * @function
+ *
  * @since 1.0.0
  */
 export const lcm = <A>(S: Setoid<A>, F: Field<A>): ((x: A, y: A) => A) => {

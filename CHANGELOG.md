@@ -14,6 +14,333 @@
 **Note**: Gaps between patch versions are faulty/broken releases. **Note**: A feature tagged as Experimental is in a
 high state of flux, you're at risk of it changing without notice.
 
+# 1.17.1
+
+**Polish**
+
+- make `Type<URI1, A>` not assignable to `Type<URI2, A>`, closes #536 (@gcanti)
+
+# 1.17.0
+
+- **New Feature**
+  - add `Show` type class and related instances (@gcanti)
+  - add `fromNonEmptyArray2v` to `Zipper` module (@DenisFrezzato)
+  - add `getOrElse` / `getOrElseL` to `TaskEither` (@zanza00)
+  - `NonEmptyArray2v` module
+    - add `modifyAt` (@gcanti)
+    - add `copy` (@gcanti)
+  - mark `NonEmptyArray2v` as official module
+- **Deprecations**
+  - deprecate `liftA<n>` functions (@gcanti)
+  - deprecate `NonEmptyArray` module (@gcanti)
+
+# 1.16.1
+
+- **New Feature**
+  - add `findFistMap` and `findLastMap` to `Array` module, closes #788 (@sledorze)
+  - add `cons` / `snoc` to `NonEmptyArray2v` module, closes #800 (@sledorze)
+  - add `Traced` comonad, closes #798 (@gcanti)
+  - add `tryCatch` to `Validation` module (@gcanti)
+  - add `FunctionN` type alias (@ta2gch)
+  - add `MonadThrow` and related instances (@gcanti)
+  - add es6 module step to build for tree-shaking support (@FruitieX)
+  - add `parseJSON` / `stringifyJSON` to `Either` module (@gcanti)
+  - add `Magma` (@gcanti)
+  - add `fromFoldableMap` to `Record` module (@gcanti)
+- **Polish**
+  - `snoc` / `cons` in `Array` now return a `NonEmptyArray` (@sledorze)
+  - replace `any` with `unknown` in `Console` module (@gcanti)
+  - replace `any` with `unknown` in `Trace` module (@gcanti)
+
+# 1.15.1
+
+- **Regression**
+  - revert `SequenceT*` deletion and prevent distribution of conditional types in `sequenceT`, `sequenceS`, fix #790 (@gcanti)
+
+# 1.15.0
+
+**Note**. This version requires `typescript@3.1+` (mapped tuples)
+
+- **New Feature**
+  - add `Apply.sequenceS`, closes #688 (@gcanti)
+  - make `function.tuple` variadic (@gcanti)
+  - make `Semigroup.getTupleSemigroup` variadic (@gcanti)
+  - make `Monoid.getTupleMonoid` variadic (@gcanti)
+  - make `Ord.getTupleOrd` variadic (@gcanti)
+  - make `Setoid.getTupleSetoid` variadic (@gcanti)
+  - make `Ring.getTupleRing` variadic (@gcanti)
+  - make `Apply.sequenceT` variadic (@gcanti)
+- **Experimental**
+  - add `NonEmptyArray2v` module (type level non empty arrays), closes #735 (@gcanti)
+
+# 1.14.4
+
+- **Polish**
+  - Add overloads to `sequenceT` to allow more arguments (up to 8) (@cdimitroulas)
+
+# 1.14.3
+
+- **Deprecation**
+  - deprecate `StrMap.traverseWithKey` in favour of `strmap.traverseWithIndex` (@gcanti)
+  - deprecate `OptionT.getOptionT` in favour of `OptionT.getOptionT2v`
+  - deprecate useless `OptionT` functions (@gcanti)
+  - deprecate `EitherT.getEitherT` in favour of `EitherT.getEitherT2v` (@gcanti)
+  - deprecate useless `EitherT` functions (@gcanti)
+  - deprecate `ReaderT.getReaderT` in favour of `ReaderT.getReaderT2v` (@gcanti)
+  - deprecate useless `ReaderT` functions (@gcanti)
+  - deprecate `StateT.getStateT` in favour of `StateT.getStateT2v` (@gcanti)
+  - deprecate useless `StateT` functions (@gcanti)
+  - deprecate `Ord.getProductOrd` / `Ring.getProductRing` in favour of `Ord.getTupleOrd` / `Ring.getTupleRing` (@gcanti)
+
+# 1.14.2
+
+- **Deprecation**
+  - deprecate `Setoid.getRecordSetoid` in favour of `Setoid.getStructSetoid` (@gcanti)
+  - deprecate `Setoid.getProductSetoid` in favour of `Setoid.getTupleSetoid` (@gcanti)
+
+# 1.14.1
+
+- **New Feature**
+  - add `Map` module (@joshburgess)
+  - `Record`
+    - functions now support subtypes of `string` for the `K` type parameter (@gcanti)
+    - add `every` (@gcanti)
+    - add `some` (@gcanti)
+    - add `elem` (@gcanti)
+  - add `function.constVoid` (@leemhenson)
+  - `Set`
+    - add `empty` (@gcanti)
+    - add `foldMap` (@gcanti)
+  - add `Reader.getSemigroup`, `Reader.getMonoid` (@gcanti)
+  - `NonEmptyArray`
+    - Add `getSetoid` (@MaximeRDY)
+    - add `NonEmptyArray.prototype.toArrayMap` (@gcanti)
+    - add `NonEmptyArray.prototype.some` (@gcanti)
+    - add `NonEmptyArray.prototype.every` (@gcanti)
+  - `StrMap`
+    - add `StrMap.prototype.every` (@gcanti)
+    - add `StrMap.prototype.some` (@gcanti)
+    - add `elem` (@gcanti)
+  - add `Tree.elem` (@gcanti)
+- **Polish**
+  - many optimizations (@sledorze)
+  - ensure 100% coverage (@gcanti)
+- **Deprecations**
+  - deprecate `Array.index` in favour of `Array.lookup` (@gcanti)
+  - deprecate `NonEmptyArray.prototype.index` in favour of `NonEmptyArray.prototype.lookup` (@gcanti)
+  - deprecate `Record.isSubdictionary` in favour of `Record.isSubrecord` (@gcanti)
+  - deprecate `Semigroup.getDictionarySemigroup`, `Monoid.getDictionaryMonoid` in favour of `Record.getMonoid` (@gcanti)
+  - deprecate `Array.getArraySemigroup` (@gcanti)
+  - deprecate `Set.member` in favour of `Set.elem` (@gcanti)
+  - deprecate `Array.member` in favour of `Array.elem` (@gcanti)
+  - `Record` / `StrMap`: fix withIndex names (@gcanti)
+  - use "Struct" instead of "Record", and "Tuple" instead of "Product" (@gcanti)
+- **Internal**
+  - drop Type-level integrity check (@gcanti)
+
+# 1.13.0
+
+- **New Feature**
+  - add `Array.unzip` (@user753)
+  - add `Group` type class (@gcanti)
+  - add `FreeGroup` module (@gcanti)
+  - add `These` functions (@gcanti)
+    - `thisOrBoth`
+    - `thatOrBoth`
+    - `theseThis`
+    - `theseThat`
+    - `fromOptions`
+    - `fromEither`
+
+# 1.12.3
+
+- **Polish**
+  - support for constrained domain in `Record` module, closes #685 (@gcanti)
+  - optimize `Foldable2v.toArray` (@gcanti)
+
+# 1.12.2
+
+- **Bug Fix**
+  - fix `Tree.drawTree` (@gcanti)
+
+# 1.12.1
+
+- **Bug Fix**
+  - `array.map` should be safe when executed with a binary function, fix #675 (@gcanti)
+
+# 1.12.0
+
+- **Deprecation**
+  - deprecate `Set.difference` in favour of `difference2v` (@gcanti)
+- **New Feature**
+  - add `Array.union` (@gcanti)
+  - add `Array.intersection` (@gcanti)
+  - add `Array.difference` (@gcanti)
+  - add `Set.compact` (@gcanti)
+  - add `Set.separate` (@gcanti)
+  - add `Set.filterMap` (@gcanti)
+  - add `getCompactableComposition` (@gcanti)
+  - add `getFilterableComposition` (@gcanti)
+  - add `chainFirst`, `chainSecond` to `TaskEither` (@gcanti)
+  - add `NonEmptyArray.prototype.filterWithIndex` (@gcanti)
+  - add WithKey variants to `Record` (@gcanti)
+    - `reduceWithKey`
+    - `foldMapWithKey`
+    - `foldrWithKey`
+    - `partitionMapWithIndex`
+    - `partitionWithIndex`
+    - `filterMapWithIndex`
+    - `filterWithIndex`
+  - add `FunctorWithIndex` type class (@MaximeRDY)
+    - `Array` instance (@MaximeRDY)
+    - `NonEmptyArray` instance (@MaximeRDY)
+    - `StrMap` instance (@gcanti)
+    - `getFunctorWithIndexComposition` (@MaximeRDY)
+  - add `FoldableWithIndex` type class (@gcanti)
+    - `Array` instance (@gcanti)
+    - `NonEmptyArray` instance (@gcanti)
+    - `StrMap` instance (@gcanti)
+  - add `TraversableWithIndex` type class (@gcanti)
+    - `Array` instance (@gcanti)
+    - `NonEmptyArray` instance (@gcanti)
+    - `StrMap` instance (@gcanti)
+  - add `FilterableWithIndex` type class (@gcanti)
+    - `Array` instance (@gcanti)
+    - `StrMap` instance (@gcanti)
+- **Internal**
+  - upgrade to `typescript@3.2.1` (@gcanti)
+
+# 1.11.3
+
+- **Deprecation**
+  - `Array`
+    - `refine` in favour of `filter` (@gcanti)
+  - `Either`
+    - `.prototype.refineOrElse` in favour of `.prototype.filterOrElse` (@gcanti)
+    - `.prototype.refineOrElseL` in favour of `.prototype.filterOrElseL` (@gcanti)
+    - `fromRefinement` in favour of `fromPredicate` (@gcanti)
+  - `Option`
+    - `.prototype.refine` in favour of `.prototype.filter` (@gcanti)
+    - `fromRefinement` in favour of `fromPredicate` (@gcanti)
+- **Polish**
+  - use built-in `Record` type in `Record` module (@gcanti)
+  - add support for refinements (@gcanti)
+    - `Array`
+      - `takeWhile`
+      - `span`
+    - `NonEmptyArray`
+      - `.prototype.filter`
+    - `ReaderTaskEither`
+      - `fromPredicate`
+    - `Record`
+      - `filter`
+    - `Set`
+      - `filter`
+      - `partition`
+    - `StrMap`
+      - `filter`
+    - `TaskEither`
+      - `.prototype.filterOrElse`
+      - `.prototype.filterOrElseL`
+      - `fromPredicate`
+    - `Validation`
+      - `fromPredicate`
+
+# 1.11.2
+
+- **Bug Fix**
+  - fix `function.toString` when input does not have `Object` on its prototype chain (@gcanti)
+
+# 1.11.1
+
+- **Polish**
+  - `ReaderTaskEither.tryCatch`: add the environment as the second argument of the `onrejected` handler (@ascariandrea)
+
+# 1.11.0
+
+- **Deprecation**
+  - deprecate `Either.tryCatch` in favour of `Either.tryCatch2v` (@gcanti)
+  - deprecate `IOEither.tryCatch` in favour of `IOEither.tryCatch2v` (@gcanti)
+- **New Feature**
+  - add `Strong` type class (@gcanti)
+  - add `Choice` type class (@gcanti)
+  - use `unknown` type instead of `{}`, #539 (@gcanti)
+  - use `HKT4`, `URIS4`, `URI2HKT4`, #555 (@babakness)
+  - `NonEmptyArray` enhancement #627 (@sledorze)
+    - `index`
+    - `findFirst`
+    - `findLast`
+    - `findIndex`
+    - `findLastIndex`
+    - `insertAt`
+    - `updateAt`
+    - `filter`
+  - `TaskEither`
+    - add `filterOrElse`, `filterOrElseL`, #619 (@gcanti)
+  - `Reader`
+    - add `Profunctor` instance #634 (@gcanti)
+    - add `Strong` instance (@gcanti)
+    - add `Choice` instance (@gcanti)
+    - add `Category` instance (@gcanti)
+  - add `Category4`, `Functor4`, `Profunctor4`, `Semigroupoid4`, `Strong4` (@gcanti)
+- **Bug Fix**
+  - fix `TaskEither.taskify` with immutable arguments, #637 (@DenisFrezzato)
+
+# 1.10.1
+
+- **Bug Fix**
+  - backport #637 (@gcanti)
+
+# 1.10.0
+
+- **Deprecation**
+  - deprecate `Foldable` in favour of `Foldable2v` (\*)
+  - deprecate `Traversable` in favour of `Traversable2v` (\*)
+- **New Feature**
+  - `Array`
+    - add `chop` function (@gcanti)
+    - add `split` function (@gcanti)
+    - add `chunksOf` function (@gcanti)
+    - add `takeEnd` function (@gcanti)
+    - add `dropEnd` function (@gcanti)
+    - add `makeBy` function (@gcanti)
+    - add `repeat` function (@gcanti)
+    - add `replicate` function (@gcanti)
+    - add `findLastIndex` function (@gcanti)
+    - add array `comprehension` (@gcanti)
+  - `NonEmptyArray`
+    - add `length` method (@gcanti)
+    - add `groupBy` function (@gcanti)
+  - `StrMap`
+    - add `empty` constant (@gcanti)
+  - `Task`
+    - add sequential instance (@giogonzo)
+  - `TaskEither`
+    - add `attempt` method (@gcanti)
+    - add `bracket` function (@gcanti)
+    - add sequential instance (@giogonzo)
+    - add `foldTask` method (@gcanti)
+    - add `foldTaskEither` method (@gcanti)
+  - `ReaderTaskEither`
+    - add sequential instance (@giogonzo)
+  - add `MonadIO` module (@gcanti)
+  - add `MonadTask` module (@gcanti)
+  - add `Date` module (@gcanti)
+  - add `Foldable2v` module + instances (@gcanti)
+  - add `Traversable2v` module + instances (@gcanti)
+  - add `Record` module (@gcanti)
+- **Documentation**
+  - refactor docs layout (@gcanti)
+  - add examples to `Array` module (@gcanti)
+  - type-check the examples while generating the documentation (@gcanti)
+  - comparison with ramda
+  - add example and explanation for `Array.member` (@fozcodes)
+- **Internal**
+  - upgrade to typescript@3.1.2 (@gcanti)
+  - add `function.not` test case (@gibbok)
+
+(\*) `Foldable` and `Traversable` will be replaced with `Foldable2v` and `Traversable2v` implementations in `fp-ts@2`
+
 # 1.9.0
 
 - **New Feature**
